@@ -18,6 +18,7 @@ ACCOUNTS = [
     ("B", os.path.join(HOME, ".claude-b")),
 ]
 CACHE_PATH = os.path.join(HOME, ".claude", "usage-cache.json")
+PET_PATH = os.path.join(HOME, ".claude", "statusline-pet.json")
 CACHE_TTL = 120  # seconds between fetches per account
 USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
 TOKEN_URL = "https://platform.claude.com/v1/oauth/token"
@@ -165,6 +166,42 @@ def fmt_tag(name, plan, is_active):
     return f"{dot} {color}{name}{RESET} {MUTED}{badge:<4}{RESET}"
 
 
+# Pet grows with the number of distinct sessions seen (Lv = 1 + sqrt(sessions)).
+PET_STAGES = [(10, "🦚"), (7, "🐔"), (5, "🐥"), (3, "🐣"), (1, "🥚")]
+PET_SEEN_MAX = 200  # remembered session ids, enough to avoid double counting
+
+
+def context_pct(session):
+    ctx = session.get("context_window") or {}
+    if ctx.get("used_percentage") is not None:
+        return ctx["used_percentage"]
+    usage, size = ctx.get("current_usage") or {}, ctx.get("context_window_size")
+    if not size:
+        return None
+    used = sum(usage.get(k) or 0 for k in (
+        "input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"))
+    return used / size * 100
+
+
+def fmt_pet(session):
+    pet = load_json(PET_PATH, {"sessions": 0, "seen": []})
+    sid = session.get("session_id")
+    if sid and sid not in pet["seen"]:
+        pet["sessions"] += 1
+        pet["seen"] = (pet["seen"] + [sid])[-PET_SEEN_MAX:]
+        try:
+            save_json(PET_PATH, pet)
+        except OSError:
+            pass
+    level = 1 + int(pet["sessions"] ** 0.5)
+    body = next(e for lv, e in PET_STAGES if level >= lv)
+    # Mood follows context usage: fresh -> normal -> tired -> sleepy (time to /compact).
+    pct = context_pct(session)
+    mood = ("" if pct is None or 30 <= pct < 60 else
+            "✨" if pct < 30 else "💦" if pct < 85 else "💤")
+    return f"{body}{mood} {MUTED}Lv{level}{RESET}"
+
+
 def main():
     try:
         session = json.loads(sys.stdin.read() or "{}")
@@ -214,6 +251,8 @@ def main():
     model = (session.get("model") or {}).get("display_name")
     if model and lines:
         lines[0] += f"{SEP}{MUTED}{model}{RESET}"
+    if lines:
+        lines[0] += SEP + fmt_pet(session)
     sys.stdout.buffer.write("\n".join(lines).encode("utf-8"))
 
 
