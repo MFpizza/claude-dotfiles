@@ -13,7 +13,10 @@ REPO = os.path.dirname(os.path.abspath(__file__))
 HOME = os.path.expanduser("~")
 CLAUDE_A = os.path.join(HOME, ".claude")
 CLAUDE_B = os.path.join(HOME, ".claude-b")
-SHARED_DIRS = ["projects", "skills", "agents", "commands", "plugins", "file-history"]
+# sessions/ is the live-session registry that ListAgents / SendMessage read,
+# so sharing it lets A and B sessions find and message each other.
+SHARED_DIRS = ["projects", "skills", "agents", "commands", "plugins", "file-history",
+               "sessions"]
 BEGIN, END = "# >>> claude-dotfiles >>>", "# <<< claude-dotfiles <<<"
 
 
@@ -21,20 +24,38 @@ def step(msg):
     print(f"  ✓ {msg}")
 
 
+def merge_into(src, dst):
+    """Move src's entries into dst (never overwriting) and remove src if emptied."""
+    for entry in os.listdir(src):
+        if not os.path.lexists(os.path.join(dst, entry)):
+            shutil.move(os.path.join(src, entry), os.path.join(dst, entry))
+    if os.listdir(src):
+        return False
+    os.rmdir(src)
+    return True
+
+
 def link_shared_dirs():
     os.makedirs(CLAUDE_B, exist_ok=True)
+    shared = []
     for name in SHARED_DIRS:
         target = os.path.join(CLAUDE_A, name)
         link = os.path.join(CLAUDE_B, name)
         os.makedirs(target, exist_ok=True)
-        if os.path.lexists(link):
-            continue
-        if sys.platform == "win32":
-            subprocess.run(["cmd", "/c", "mklink", "/J", link, target],
-                           check=True, stdout=subprocess.DEVNULL)
-        else:
-            os.symlink(target, link)
-    step(f"~/.claude-b 共用 {', '.join(SHARED_DIRS)}")
+        if os.path.lexists(link) and not os.path.samefile(link, target):
+            # A real folder B created before this dir was shared: fold it into A's.
+            if not merge_into(link, target):
+                print(f"  ! ~/.claude-b/{name} 有與 ~/.claude/{name} 同名的項目，"
+                      f"未建立連結；請手動處理後重跑")
+                continue
+        if not os.path.lexists(link):
+            if sys.platform == "win32":
+                subprocess.run(["cmd", "/c", "mklink", "/J", link, target],
+                               check=True, stdout=subprocess.DEVNULL)
+            else:
+                os.symlink(target, link)
+        shared.append(name)
+    step(f"~/.claude-b 共用 {', '.join(shared)}")
 
 
 def configure_status_line():
@@ -88,15 +109,29 @@ def install_profile_block():
         step(f"PowerShell profile：{path}")
 
 
+def install_cmd_shims():
+    """cmd.exe can't see PowerShell functions; put forwarders in ~/.local/bin (on PATH)."""
+    if sys.platform != "win32":
+        return
+    bin_dir = os.path.join(HOME, ".local", "bin")
+    os.makedirs(bin_dir, exist_ok=True)
+    for name in ("claude-a.cmd", "claude-b.cmd"):
+        target = os.path.join(REPO, "bin", name)
+        with open(os.path.join(bin_dir, name), "w", newline="\r\n") as f:
+            f.write(f'@call "{target}" %*\n')
+    step(f"cmd.exe 指令：{bin_dir}\\claude-a.cmd、claude-b.cmd")
+
+
 def main():
-    if sys.version_info < (3, 7):
-        sys.exit("需要 Python 3.7 以上")
+    if sys.version_info < (3, 8):  # os.stat follows Windows junctions from 3.8
+        sys.exit("需要 Python 3.8 以上")
     sys.stdout.reconfigure(encoding="utf-8")
     print("安裝 claude-dotfiles …")
     link_shared_dirs()
     configure_status_line()
     install_profile_block()
-    print("\n完成。開新的 PowerShell 視窗，執行 claude-a 或 claude-b；"
+    install_cmd_shims()
+    print("\n完成。開新的 PowerShell 或 cmd 視窗，執行 claude-a 或 claude-b；"
           "第一次使用某個帳號時在 Claude 裡輸入 /login。")
 
 

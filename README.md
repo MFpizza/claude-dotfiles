@@ -30,9 +30,9 @@ Claude Code 雙帳號切換，加上一條同時顯示兩個帳號用量的狀�
 
 ### 需求
 
-- Windows + PowerShell
+- Windows（PowerShell 或 cmd 皆可）
 - [Claude Code](https://docs.claude.com/en/docs/claude-code)，`claude` 指令可在終端機直接執行
-- Python 3.7 以上（只用標準函式庫，不必 `pip install`）
+- Python 3.8 以上（只用標準函式庫，不必 `pip install`）
 - git
 
 ### 步驟
@@ -47,14 +47,15 @@ python install.py
 
 ```
 安裝 claude-dotfiles …
-  ✓ ~/.claude-b 共用 projects, skills, agents, commands, plugins, file-history
+  ✓ ~/.claude-b 共用 projects, skills, agents, commands, plugins, file-history, sessions
   ✓ settings.json 已設定 statusLine（原檔備份為 settings.json.bak）
   ✓ PowerShell profile：C:\Users\<你>\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
+  ✓ cmd.exe 指令：C:\Users\<你>\.local\bin\claude-a.cmd、claude-b.cmd
 ```
 
 ### 第一次登入
 
-**開一個新的 PowerShell 視窗**，才會載入新指令。
+**開一個新的 PowerShell 或 cmd 視窗**，才會載入新指令。
 
 ```powershell
 claude-a      # 進入後輸入 /login，登入第一個帳號
@@ -160,6 +161,8 @@ claude-b --resume
 
 可以，兩個帳號的額度各自計算。**但不要讓兩個視窗同時開啟同一個 session**，對話紀錄會互相覆蓋。
 
+A 和 B 的 session 可以用 ListAgents 互相看到，也能用 SendMessage 互傳訊息（本機 session 才行；claude.ai 上的 Remote Control session 仍只看得到同一個帳號的）。
+
 ### 新增 skill 或 agent
 
 放在 `~/.claude/skills/` 或 `~/.claude/agents/`，兩個帳號都會看到。專案內的 `.claude/agents/` 本來就跟著 repo 走，兩個帳號也都看得到。
@@ -182,6 +185,7 @@ claude-b --resume
 | 自訂斜線指令 | `commands/` | 共用 |
 | plugins | `plugins/` | 共用 |
 | 檔案編輯紀錄（還原用） | `file-history/` | 共用 |
+| 執行中 session 的登記（ListAgents、SendMessage 用） | `sessions/` | 共用 |
 | 設定 | `settings.json` | A → B 單向同步 |
 | 登入憑證 | `.credentials.json` | 各自獨立 |
 | 帳號資訊、使用者層級 MCP 設定 | `.claude.json` | 各自獨立 |
@@ -201,6 +205,14 @@ git pull
 ```
 
 狀態列與 `claude-a`／`claude-b` 都直接讀這個資料夾裡的檔案，**拉下來就生效**，不必重新安裝。
+
+例外是新增了共用資料夾的版本（例如加入 `sessions/` 共用那一版），需要**先關掉所有 `claude-b` 視窗**，再重跑：
+
+```powershell
+python install.py
+```
+
+B 原本獨立的資料夾會被併入 A 的對應資料夾，再換成 junction。
 
 ### 修改設計
 
@@ -245,6 +257,7 @@ python install.py
   ```
 
 - 如果你用的是 PowerShell 7（`pwsh`），而安裝時它還沒裝，請重跑 `python install.py`。
+- 在 cmd 裡：確認 `~/.local/bin` 裡有 `claude-a.cmd`、`claude-b.cmd`，且這個資料夾在 PATH 上（Claude Code 安裝時會加入）。沒有的話重跑 `python install.py`。
 
 **狀態列沒出現**
 - 重新啟動 Claude。
@@ -256,7 +269,7 @@ python install.py
 - 字型需要有 `▰ ▱ ● ○ ↻ │` 這些字元，例如 Cascadia Code。
 
 **建立 junction 失敗**
-- 確認 `~/.claude-b` 裡對應的名稱沒有被一般資料夾佔用。若有，先把裡面的東西移到 `~/.claude` 對應位置，刪除該資料夾後重跑 `install.py`。
+- `install.py` 會把 `~/.claude-b` 裡的一般資料夾併入 `~/.claude` 的對應位置。若出現「有同名的項目，未建立連結」，代表兩邊有同名檔案，自動合併時不會覆蓋。請手動決定保留哪一份，把 `~/.claude-b` 裡的那個資料夾清空並刪除後，再重跑 `install.py`。
 
 **B 的設定跟 A 不一樣**
 - B 的 `settings.json` 每次啟動 `claude-b` 時才會從 A 複製。若直接執行 `$env:CLAUDE_CONFIG_DIR=...; claude`，就不會同步。
@@ -276,6 +289,7 @@ python install.py
    `rmdir` 只會移除 junction 本身，**不會**刪到 `~/.claude` 裡共用的資料。
    請不要用檔案總管或 `Remove-Item -Recurse` 刪除，某些情況下會連同目標資料一起刪除。
 4. 刪除 `~/.claude/usage-cache.json`。
+5. 刪除 `~/.local/bin/claude-a.cmd`、`claude-b.cmd`。
 
 ---
 
@@ -285,7 +299,8 @@ python install.py
 |---|---|
 | `usage_statusline.py` | 狀態列。以各帳號自己的 OAuth token 呼叫 `api/oauth/usage` 取得用量並快取 |
 | `claude-accounts.ps1` | 定義 `claude-a`、`claude-b`，由 PowerShell profile 載入 |
-| `install.py` | 建立 `~/.claude-b` 與共用連結、設定 statusLine、寫入 PowerShell profile |
+| `bin/claude-a.cmd`、`bin/claude-b.cmd` | cmd.exe 版的 `claude-a`、`claude-b`；install.py 在 `~/.local/bin` 放轉呼叫它們的小檔 |
+| `install.py` | 建立 `~/.claude-b` 與共用連結、設定 statusLine、寫入 PowerShell profile、放 cmd 指令 |
 
 ### 安全與限制
 
