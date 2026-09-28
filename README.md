@@ -1,6 +1,6 @@
 # claude-dotfiles
 
-Claude Code 雙帳號切換，加上一條同時顯示兩個帳號用量的狀態列。
+Claude Code 多帳號切換（兩個訂閱帳號，外加一個選用的 API 計費帳號），加上一條同時顯示所有帳號用量的狀態列。
 
 ```
 ● A Pro  │ 5h ▰▱▱▱▱▱▱▱▱▱  12% ↻ 4h39m  │ 週 ▰▱▱▱▱▱▱▱▱▱   2% ↻ 1d16h  │ Opus 5.5 │ 🐥✨ Lv5
@@ -9,6 +9,8 @@ Claude Code 雙帳號切換，加上一條同時顯示兩個帳號用量的狀�
 
 - 兩個帳號**共用** session、記憶、skills、agents：用 A 做到一半，額度用完就換 B 接著做。
 - 狀態列隨時顯示**兩個帳號**的 5 小時與每週用量，包括沒在使用的那個帳號。
+- 選用第三個帳號 C 走 API 計費：兩個訂閱額度都用完時還能繼續，狀態列改顯示花費。
+- 版型可以切換成[一行的緊湊版](#版型)。
 
 ---
 
@@ -53,6 +55,8 @@ python install.py
   ✓ cmd.exe 指令：C:\Users\<你>\.local\bin\claude-a.cmd、claude-b.cmd
 ```
 
+這台電腦也要用 API 計費的帳號 C 時，改用 `python install.py --with-api`，會多建立 `~/.claude-c` 和 `claude-c.cmd`。沒加這個參數的電腦不會有 C，狀態列也不會顯示它。
+
 ### 第一次登入
 
 **開一個新的 PowerShell 或 cmd 視窗**，才會載入新指令。
@@ -60,6 +64,7 @@ python install.py
 ```powershell
 claude-a      # 進入後輸入 /login，登入第一個帳號
 claude-b      # 進入後輸入 /login，登入第二個帳號
+claude-c      # 有加 --with-api 才需要：/login 時選 Anthropic Console 帳號（API 計費）
 ```
 
 每台電腦的每個帳號只需要登入一次。
@@ -74,10 +79,11 @@ claude-b      # 進入後輸入 /login，登入第二個帳號
 |---|---|
 | `claude-a` | 用帳號 A 開啟 Claude |
 | `claude-b` | 用帳號 B 開啟 Claude |
+| `claude-c` | 用帳號 C（API 計費）開啟 Claude |
 | `claude-a --resume` | 用帳號 A 挑一個舊 session 接續 |
 | `claude-b --continue` | 用帳號 B 接續這個資料夾最近的 session |
 
-`claude-a`、`claude-b` 後面可以接任何原本 `claude` 的參數，例如：
+`claude-a`、`claude-b`、`claude-c` 後面可以接任何原本 `claude` 的參數，例如：
 
 ```powershell
 claude-b --agent implementer
@@ -133,6 +139,34 @@ claude-a -p "幫我摘要這個 repo"
 **帳號退訂後**，狀態列仍會顯示最後一次抓到的數值並標上「快取」；若該額度的重置時間已過，會直接顯示 0%。
 
 用量每 2 分鐘最多查詢一次，資料快取在 `~/.claude/usage-cache.json`。
+
+### 帳號 C（API 計費）
+
+API 帳號沒有 5 小時或每週額度，所以改顯示**花費**：
+
+```
+● C API  │ 本次 $0.42 │ 今日 $3.10 │ 本月 $25.70
+```
+
+- `本次` 只在目前視窗用的是 C 時出現。
+- 金額是狀態列在你使用 C 時自己累計的，數字來自 Claude Code 對每個 session 的費用估算。它只算這台電腦上的使用量，不是 Console 的帳單；實際扣款以 [Console](https://console.anthropic.com/) 為準。
+- 只有目前用的是 C，或這台電腦曾經用 C 記過花費時才會顯示這一行；沒用 C 的電腦完全看不到它。
+- 紀錄存在 `~/.claude/api-cost.json`，保留約兩個月。
+
+### 版型
+
+```powershell
+python usage_statusline.py --layout compact   # 一行的緊湊版
+python usage_statusline.py --layout full      # 預設的完整版
+```
+
+緊湊版把所有帳號擠在同一行，只顯示百分比；用量達 80% 時才會加上重置時間，`*` 代表是快取資料：
+
+```
+● A 5h 88% ↻4h13m 週 39% │ ○ B 5h 13% 週 29% │ ○ C 今日 $0.52 │ Opus 5.5 │ 🐣✨ Lv3
+```
+
+設定存在 `~/.claude/statusline.json`，所有帳號共用，下次狀態列更新時生效。
 
 ### 小寵物
 
@@ -310,8 +344,8 @@ python install.py
 
    `rmdir` 只會移除 junction 本身，**不會**刪到 `~/.claude` 裡共用的資料。
    請不要用檔案總管或 `Remove-Item -Recurse` 刪除，某些情況下會連同目標資料一起刪除。
-4. 刪除 `~/.claude/usage-cache.json` 和 `~/.claude/statusline-pet.json`。
-5. 刪除 `~/.local/bin/claude-a.cmd`、`claude-b.cmd`。
+4. 刪除 `~/.claude` 裡的 `usage-cache.json`、`statusline-pet.json`、`statusline.json`、`api-cost.json`。
+5. 刪除 `~/.local/bin/claude-a.cmd`、`claude-b.cmd`、`claude-c.cmd`。帳號 C 的 `~/.claude-c` 比照第 3 步的方式刪除。
 
 ---
 
@@ -320,9 +354,9 @@ python install.py
 | 檔案 | 用途 |
 |---|---|
 | `usage_statusline.py` | 狀態列。以各帳號自己的 OAuth token 呼叫 `api/oauth/usage` 取得用量並快取 |
-| `claude-accounts.ps1` | 定義 `claude-a`、`claude-b`，由 PowerShell profile 載入 |
-| `bin/claude-a.cmd`、`bin/claude-b.cmd` | cmd.exe 版的 `claude-a`、`claude-b`；install.py 在 `~/.local/bin` 放轉呼叫它們的小檔 |
-| `install.py` | 建立 `~/.claude-b` 與共用連結、設定 statusLine、寫入 PowerShell profile、放 cmd 指令 |
+| `claude-accounts.ps1` | 定義 `claude-a`、`claude-b`、`claude-c`，由 PowerShell profile 載入 |
+| `bin/claude-a.cmd`、`claude-b.cmd`、`claude-c.cmd` | cmd.exe 版的 `claude-a`、`claude-b`、`claude-c`；install.py 在 `~/.local/bin` 放轉呼叫它們的小檔 |
+| `install.py` | 建立 `~/.claude-b`（加 `--with-api` 時還有 `~/.claude-c`）與共用連結、設定 statusLine、寫入 PowerShell profile、放 cmd 指令 |
 
 ### 安全與限制
 

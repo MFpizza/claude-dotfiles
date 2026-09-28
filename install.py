@@ -1,7 +1,8 @@
-"""Install the dual-account setup and usage status line on this computer.
+"""Install the multi-account setup and usage status line on this computer.
 
 Safe to run again (e.g. after moving this folder): every step is idempotent.
-    python install.py
+    python install.py              accounts A and B
+    python install.py --with-api   also account C (API billing)
 """
 import json
 import os
@@ -13,8 +14,9 @@ REPO = os.path.dirname(os.path.abspath(__file__))
 HOME = os.path.expanduser("~")
 CLAUDE_A = os.path.join(HOME, ".claude")
 CLAUDE_B = os.path.join(HOME, ".claude-b")
+CLAUDE_C = os.path.join(HOME, ".claude-c")  # API billing, only with --with-api
 # sessions/ is the live-session registry that ListAgents / SendMessage read,
-# so sharing it lets A and B sessions find and message each other.
+# so sharing it lets sessions of every account find and message each other.
 SHARED_DIRS = ["projects", "skills", "agents", "commands", "plugins", "file-history",
                "sessions"]
 BEGIN, END = "# >>> claude-dotfiles >>>", "# <<< claude-dotfiles <<<"
@@ -35,17 +37,18 @@ def merge_into(src, dst):
     return True
 
 
-def link_shared_dirs():
-    os.makedirs(CLAUDE_B, exist_ok=True)
+def link_shared_dirs(account_dir):
+    os.makedirs(account_dir, exist_ok=True)
+    label = "~/" + os.path.basename(account_dir)
     shared = []
     for name in SHARED_DIRS:
         target = os.path.join(CLAUDE_A, name)
-        link = os.path.join(CLAUDE_B, name)
+        link = os.path.join(account_dir, name)
         os.makedirs(target, exist_ok=True)
         if os.path.lexists(link) and not os.path.samefile(link, target):
-            # A real folder B created before this dir was shared: fold it into A's.
+            # A real folder created before this dir was shared: fold it into A's.
             if not merge_into(link, target):
-                print(f"  ! ~/.claude-b/{name} 有與 ~/.claude/{name} 同名的項目，"
+                print(f"  ! {label}/{name} 有與 ~/.claude/{name} 同名的項目，"
                       f"未建立連結；請手動處理後重跑")
                 continue
         if not os.path.lexists(link):
@@ -55,7 +58,7 @@ def link_shared_dirs():
             else:
                 os.symlink(target, link)
         shared.append(name)
-    step(f"~/.claude-b 共用 {', '.join(shared)}")
+    step(f"{label} 共用 {', '.join(shared)}")
 
 
 def configure_status_line():
@@ -109,29 +112,34 @@ def install_profile_block():
         step(f"PowerShell profile：{path}")
 
 
-def install_cmd_shims():
+def install_cmd_shims(with_api):
     """cmd.exe can't see PowerShell functions; put forwarders in ~/.local/bin (on PATH)."""
     if sys.platform != "win32":
         return
     bin_dir = os.path.join(HOME, ".local", "bin")
     os.makedirs(bin_dir, exist_ok=True)
-    for name in ("claude-a.cmd", "claude-b.cmd"):
+    names = ("claude-a.cmd", "claude-b.cmd") + (("claude-c.cmd",) if with_api else ())
+    for name in names:
         target = os.path.join(REPO, "bin", name)
         with open(os.path.join(bin_dir, name), "w", newline="\r\n") as f:
             f.write(f'@call "{target}" %*\n')
-    step(f"cmd.exe 指令：{bin_dir}\\claude-a.cmd、claude-b.cmd")
+    step(f"cmd.exe 指令：{bin_dir}\\" + "、".join(names))
 
 
 def main():
     if sys.version_info < (3, 8):  # os.stat follows Windows junctions from 3.8
         sys.exit("需要 Python 3.8 以上")
     sys.stdout.reconfigure(encoding="utf-8")
+    with_api = "--with-api" in sys.argv[1:]  # account C is opt-in per computer
     print("安裝 claude-dotfiles …")
-    link_shared_dirs()
+    link_shared_dirs(CLAUDE_B)
+    if with_api:
+        link_shared_dirs(CLAUDE_C)
     configure_status_line()
     install_profile_block()
-    install_cmd_shims()
-    print("\n完成。開新的 PowerShell 或 cmd 視窗，執行 claude-a 或 claude-b；"
+    install_cmd_shims(with_api)
+    commands = "claude-a、claude-b" + ("、claude-c（API 計費）" if with_api else "")
+    print(f"\n完成。開新的 PowerShell 或 cmd 視窗，執行 {commands}；"
           "第一次使用某個帳號時在 Claude 裡輸入 /login。")
 
 

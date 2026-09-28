@@ -1,8 +1,11 @@
-"""Claude Code status line: show 5-hour / weekly usage for both accounts.
+"""Claude Code status line: show 5-hour / weekly usage for every account.
 
-Each account's usage comes from its own OAuth token (api/oauth/usage).
+Each subscription account's usage comes from its own OAuth token (api/oauth/usage).
 Results are cached in usage-cache.json; on failure (network, expired token,
 lapsed subscription) the last successful value is shown, marked with its age.
+The API-billed account has no quota, so its spend is logged in api-cost.json.
+
+    python usage_statusline.py --layout compact|full    switch layout
 """
 import json
 import os
@@ -13,12 +16,17 @@ import urllib.request
 from datetime import datetime, timezone
 
 HOME = os.path.expanduser("~")
-ACCOUNTS = [
-    ("A", os.path.join(HOME, ".claude")),
-    ("B", os.path.join(HOME, ".claude-b")),
+ACCOUNTS = [  # (name, config dir, "sub" = Pro/Max quota | "api" = pay-as-you-go)
+    ("A", os.path.join(HOME, ".claude"), "sub"),
+    ("B", os.path.join(HOME, ".claude-b"), "sub"),
+    ("C", os.path.join(HOME, ".claude-c"), "api"),
 ]
 CACHE_PATH = os.path.join(HOME, ".claude", "usage-cache.json")
 PET_PATH = os.path.join(HOME, ".claude", "statusline-pet.json")
+CONFIG_PATH = os.path.join(HOME, ".claude", "statusline.json")
+LEDGER_PATH = os.path.join(HOME, ".claude", "api-cost.json")
+LEDGER_DAYS = 62  # keep enough history for "this month"
+LAYOUTS = ("full", "compact")
 CACHE_TTL = 120  # seconds between fetches per account
 USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
 TOKEN_URL = "https://platform.claude.com/v1/oauth/token"
@@ -136,15 +144,22 @@ def bar(pct):
             f"{TRACK}{'▱' * (BAR_WIDTH - filled)}{RESET}")
 
 
-def fmt_window(label, win, stale):
-    head = f"{MUTED}{label}{RESET} "
+def window_state(win, stale):
+    """(percent used or None, resets_at) for one usage window."""
     if not win or win.get("utilization") is None:
-        return head + f"{TRACK}{'▱' * BAR_WIDTH}{RESET} {MUTED}   —{RESET}"
-    pct = win["utilization"]
-    resets_at = win.get("resets_at")
+        return None, None
+    pct, resets_at = win["utilization"], win.get("resets_at")
     # A cached window whose reset time has passed is back to 0%.
     if stale and resets_at and parse_time(resets_at) < datetime.now(timezone.utc):
         pct, resets_at = 0, None
+    return pct, resets_at
+
+
+def fmt_window(label, win, stale):
+    head = f"{MUTED}{label}{RESET} "
+    pct, resets_at = window_state(win, stale)
+    if pct is None:
+        return head + f"{TRACK}{'▱' * BAR_WIDTH}{RESET} {MUTED}   —{RESET}"
     remaining = fmt_remaining(resets_at)
     return (head + bar(pct)
             + f" {level_color(pct)}{BOLD}{pct:>3.0f}%{RESET}"
@@ -160,10 +175,9 @@ def fmt_age(seconds):
 
 
 def fmt_tag(name, plan, is_active):
-    dot = f"{ACCENT}●{RESET}" if is_active else f"{MUTED}○{RESET}"
     color = f"{TEXT}{BOLD}" if is_active else TEXT
-    badge = (plan or "").capitalize()
-    return f"{dot} {color}{name}{RESET} {MUTED}{badge:<4}{RESET}"
+    badge = "API" if plan == "api" else (plan or "").capitalize()
+    return f"{dot(is_active)} {color}{name}{RESET} {MUTED}{badge:<4}{RESET}"
 
 
 # Pet grows with the number of distinct sessions seen (Lv = 1 + sqrt(sessions)).
@@ -202,46 +216,128 @@ def fmt_pet(session):
     return f"{body}{mood} {MUTED}Lv{level}{RESET}"
 
 
+def dot(is_active):
+    return f"{ACCENT}●{RESET}" if is_active else f"{MUTED}○{RESET}"
+
+
+def compact_window(label, win, stale):
+    pct, resets_at = window_state(win, stale)
+    if pct is None:
+        return f"{MUTED}{label} —{RESET}"
+    text = f"{MUTED}{label}{RESET} {level_color(pct)}{BOLD}{pct:.0f}%{RESET}"
+    remaining = fmt_remaining(resets_at) if pct >= 80 else ""
+    return text + (f" {MUTED}↻{remaining}{RESET}" if remaining else "")
+
+
+def subscription_account(name, config_dir, is_active, cache, now):
+    """(full line, compact segment) for a Pro/Max account, from api/oauth/usage."""
+    entry = cache.get(name)
+    error = None
+    if not entry or now - entry.get("fetched_at", 0) > CACHE_TTL:
+        try:
+            usage = fetch_usage(config_dir, is_active)
+            entry = dict(usage, fetched_at=now)
+            cache[name] = entry
+        except urllib.error.HTTPError as e:
+            error = f"HTTP {e.code}"
+        except Exception as e:  # network, missing creds, bad JSON
+            error = str(e) or type(e).__name__
+        if error and entry:
+            entry["last_error"] = error
+
+    if not entry:
+        hint = f"執行 claude-{name.lower()} 後 /login" if error == "未登入" else ""
+        full = (fmt_tag(name, None, is_active) + SEP
+                + f"{MUTED}{ITALIC}{error or '無資料'}{RESET}"
+                + (f" {TRACK}·{RESET} {MUTED}{hint}{RESET}" if hint else ""))
+        return full, f"{dot(is_active)} {TEXT}{name}{RESET} {MUTED}{ITALIC}{error or '無資料'}{RESET}"
+    stale = error is not None or now - entry["fetched_at"] > CACHE_TTL * 3
+    full = (fmt_tag(name, entry.get("plan"), is_active) + SEP
+            + fmt_window("5h", entry.get("five_hour"), stale) + SEP
+            + fmt_window("週", entry.get("seven_day"), stale))
+    if stale:
+        full += f"{SEP}{MUTED}{ITALIC}快取 · {fmt_age(now - entry['fetched_at'])}{RESET}"
+    compact = (f"{dot(is_active)} {TEXT}{BOLD if is_active else ''}{name}{RESET} "
+               + compact_window("5h", entry.get("five_hour"), stale) + " "
+               + compact_window("週", entry.get("seven_day"), stale)
+               + (f"{MUTED}*{RESET}" if stale else ""))
+    return full, compact
+
+
+def session_cost(session):
+    return (session.get("cost") or {}).get("total_cost_usd")
+
+
+def record_api_cost(session, today):
+    """Log this session's spend. Resuming restarts total_cost_usd at 0, so earlier
+    runs of the same session are carried in `base`."""
+    ledger = load_json(LEDGER_PATH, {})
+    sid, cost = session.get("session_id"), session_cost(session)
+    if sid and cost is not None:
+        entry = ledger.setdefault(sid, {"day": today, "base": 0, "cost": 0})
+        if cost < entry["cost"]:
+            entry["base"] += entry["cost"]
+        entry["cost"] = cost
+        cutoff = datetime.fromtimestamp(time.time() - LEDGER_DAYS * 86400).strftime("%Y-%m-%d")
+        ledger = {k: v for k, v in ledger.items() if v["day"] >= cutoff}
+        try:
+            save_json(LEDGER_PATH, ledger)
+        except OSError:
+            pass
+    return ledger
+
+
+def api_account(name, is_active, session):
+    """(full line, compact segment) for an API-billed account, or None if never used.
+
+    The API has no quota to show, so this reports spend recorded by this status line."""
+    today = datetime.now().strftime("%Y-%m-%d")
+    ledger = record_api_cost(session, today) if is_active else load_json(LEDGER_PATH, {})
+    if not ledger and not is_active:
+        return None
+    spent = lambda keep: sum(e["base"] + e["cost"] for e in ledger.values() if keep(e["day"]))
+    day, month = spent(lambda d: d == today), spent(lambda d: d[:7] == today[:7])
+    money = lambda label, x: f"{MUTED}{label}{RESET} {TEXT}{BOLD}${x:.2f}{RESET}"
+    parts = [money("今日", day), money("本月", month)]
+    if is_active and session_cost(session) is not None:
+        parts.insert(0, money("本次", session_cost(session)))
+    full = fmt_tag(name, "api", is_active) + SEP + SEP.join(parts)
+    compact = (f"{dot(is_active)} {TEXT}{BOLD if is_active else ''}{name}{RESET} "
+               + money("今日", day))
+    return full, compact
+
+
+def set_layout(layout):
+    if layout not in LAYOUTS:
+        sys.exit(f"版型只能是：{', '.join(LAYOUTS)}")
+    config = load_json(CONFIG_PATH, {})
+    config["layout"] = layout
+    save_json(CONFIG_PATH, config)
+    print(f"狀態列版型：{layout}（下次狀態列更新時生效）")
+
+
 def main():
+    if sys.argv[1:2] == ["--layout"]:
+        return set_layout(sys.argv[2] if len(sys.argv) > 2 else "")
     try:
         session = json.loads(sys.stdin.read() or "{}")
     except ValueError:
         session = {}
     active_dir = os.path.normcase(os.path.abspath(
         os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(HOME, ".claude")))
+    layout = load_json(CONFIG_PATH, {}).get("layout", "full")
 
     cache = load_json(CACHE_PATH, {})
     now = time.time()
-    lines = []
-    for name, config_dir in ACCOUNTS:
+    rows = []
+    for name, config_dir, kind in ACCOUNTS:
         is_active = os.path.normcase(os.path.abspath(config_dir)) == active_dir
-        entry = cache.get(name)
-        error = None
-        if not entry or now - entry.get("fetched_at", 0) > CACHE_TTL:
-            try:
-                usage = fetch_usage(config_dir, is_active)
-                entry = dict(usage, fetched_at=now)
-                cache[name] = entry
-            except urllib.error.HTTPError as e:
-                error = f"HTTP {e.code}"
-            except Exception as e:  # network, missing creds, bad JSON
-                error = str(e) or type(e).__name__
-            if error and entry:
-                entry["last_error"] = error
-
-        if not entry:
-            hint = f"執行 claude-{name.lower()} 後 /login" if error == "未登入" else ""
-            lines.append(fmt_tag(name, None, is_active) + SEP
-                         + f"{MUTED}{ITALIC}{error or '無資料'}{RESET}"
-                         + (f" {TRACK}·{RESET} {MUTED}{hint}{RESET}" if hint else ""))
-            continue
-        stale = error is not None or now - entry["fetched_at"] > CACHE_TTL * 3
-        text = (fmt_tag(name, entry.get("plan"), is_active) + SEP
-                + fmt_window("5h", entry.get("five_hour"), stale) + SEP
-                + fmt_window("週", entry.get("seven_day"), stale))
-        if stale:
-            text += f"{SEP}{MUTED}{ITALIC}快取 · {fmt_age(now - entry['fetched_at'])}{RESET}"
-        lines.append(text)
+        if kind == "api":
+            row = api_account(name, is_active, session)
+        else:
+            row = subscription_account(name, config_dir, is_active, cache, now)
+        if row:
+            rows.append(row)
 
     try:
         save_json(CACHE_PATH, cache)
@@ -249,10 +345,12 @@ def main():
         pass
 
     model = (session.get("model") or {}).get("display_name")
-    if model and lines:
-        lines[0] += f"{SEP}{MUTED}{model}{RESET}"
-    if lines:
-        lines[0] += SEP + fmt_pet(session)
+    tail = ([f"{MUTED}{model}{RESET}"] if model else []) + [fmt_pet(session)]
+    if layout == "compact":
+        lines = [SEP.join([compact for _, compact in rows] + tail)]
+    else:
+        lines = [full for full, _ in rows]
+        lines[0] += SEP + SEP.join(tail)
     sys.stdout.buffer.write("\n".join(lines).encode("utf-8"))
 
 
