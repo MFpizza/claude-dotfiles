@@ -68,6 +68,8 @@ claude-b      # 進入後輸入 /login，登入第二個帳號
 claude-c      # 有加 --with-api 才需要：/login 時選 Anthropic Console 帳號（API 計費）
 ```
 
+帳號 C 走公司 gateway 或 API token、不用 `/login` 時，見[帳號 C 走 gateway 或 API token](#帳號-c-走-gateway-或-api-token)。
+
 每台電腦的每個帳號只需要登入一次。
 
 > 狀態列會使用「執行 `install.py` 的那個 Python」。電腦上有多個 Python 時，請用你想固定使用的那個來執行安裝。
@@ -186,6 +188,23 @@ API 帳號沒有 5 小時或每週額度，所以改顯示**花費**：
 - 金額是狀態列在你使用 C 時自己累計的，數字來自 Claude Code 對每個 session 的費用估算。它只算這台電腦上的使用量，不是 Console 的帳單；實際扣款以 [Console](https://console.anthropic.com/) 為準。
 - 只有目前用的是 C，或這台電腦曾經用 C 記過花費時才會顯示這一行；沒用 C 的電腦完全看不到它。
 - 紀錄存在 `~/.claude/api-cost.json`，保留約兩個月。
+
+### 帳號 C 走 gateway 或 API token
+
+有些 API 帳號不是用 `/login` 登入，而是靠 `ANTHROPIC_BASE_URL`、`ANTHROPIC_AUTH_TOKEN` 這類環境變數連到公司的 gateway。這些設定**不能**寫進 C 的 `settings.json`，因為每次啟動都會被 A 的設定蓋掉。請改放在帳號目錄裡的 `account-settings.json`：
+
+```json
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://你的-gateway/anthropic/",
+    "ANTHROPIC_AUTH_TOKEN": "你的 token"
+  }
+}
+```
+
+- `claude-a/b/c` 啟動時，只要帳號目錄裡有這個檔，就會用 `--settings` 疊加載入，也不會覆蓋它。B 也適用。
+- 檔案裡有 token，Linux 上請 `chmod 600`，也不要放進任何 git repo。
+- 走 gateway 時，狀態列的花費是 Claude Code 照官方定價估的，不一定等於 gateway 實際的計費。
 
 ### 版型
 

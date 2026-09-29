@@ -1,7 +1,9 @@
 # Claude Code multiple accounts (bash/zsh). Sourced from the rc file by install.py.
 # Account A: $CLAUDE_DOTFILES_BASE (default ~/.claude)   B: <A>-b   C: <A>-c (API billing)
 # Shared via symlinks: projects, skills, agents, commands, plugins, file-history, sessions.
-# Per account: credentials and .claude.json. settings.json is copied A -> B/C on launch.
+# Per account: credentials and .claude.json. settings.json is copied A -> B/C on launch;
+# <dir>/account-settings.json (if any) is layered on top via --settings and never
+# overwritten, e.g. env with a gateway URL and token for the API-billed account.
 # Runs `claude` from PATH; if it isn't there (installed per project and started with
 # `npx claude`), falls back to `npx --no -- claude`. Set CLAUDE_BIN to override.
 
@@ -23,6 +25,9 @@ _claude_account() {
     shift
     if [ "$dir" != "$CLAUDE_DOTFILES_BASE" ]; then
         cp -f "$CLAUDE_DOTFILES_BASE/settings.json" "$dir/settings.json" 2>/dev/null
+    fi
+    if [ -f "$dir/account-settings.json" ]; then
+        set -- --settings "$dir/account-settings.json" "$@"
     fi
     if [ "$dir" = "$HOME/.claude" ]; then
         # Default dir: leave the variable unset so claude-a and plain claude share

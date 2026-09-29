@@ -3,4 +3,6 @@ rem Claude Code account C (~/.claude-c, API billing). cmd.exe counterpart of cla
 setlocal
 set "CLAUDE_CONFIG_DIR=%USERPROFILE%\.claude-c"
 copy /Y "%USERPROFILE%\.claude\settings.json" "%CLAUDE_CONFIG_DIR%\settings.json" >nul 2>&1
-claude %*
+set "OWN="
+if exist "%CLAUDE_CONFIG_DIR%\account-settings.json" set OWN=--settings "%CLAUDE_CONFIG_DIR%\account-settings.json"
+claude %OWN% %*
