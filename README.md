@@ -11,6 +11,7 @@ Claude Code 多帳號切換（兩個訂閱帳號，外加一個選用的 API 計
 - 狀態列隨時顯示**兩個帳號**的 5 小時與每週用量，包括沒在使用的那個帳號。
 - 選用第三個帳號 C 走 API 計費：兩個訂閱額度都用完時還能繼續，狀態列改顯示花費。
 - 版型可以切換成[一行的緊湊版](#版型)。
+- 支援 Windows 與 [Linux](#linux)。
 
 ---
 
@@ -32,7 +33,7 @@ Claude Code 多帳號切換（兩個訂閱帳號，外加一個選用的 API 計
 
 ### 需求
 
-- Windows（PowerShell 或 cmd 皆可）
+- Windows（PowerShell 或 cmd 皆可），或 Linux（bash / zsh），見 [Linux](#linux)
 - [Claude Code](https://docs.claude.com/en/docs/claude-code)，`claude` 指令可在終端機直接執行
 - Python 3.8 以上（只用標準函式庫，不必 `pip install`）
 - git
@@ -40,7 +41,7 @@ Claude Code 多帳號切換（兩個訂閱帳號，外加一個選用的 API 計
 ### 步驟
 
 ```powershell
-git clone https://github.com/TwZhon/claude-dotfiles.git
+git clone https://github.com/MFpizza/claude-dotfiles.git
 cd claude-dotfiles
 python install.py
 ```
@@ -71,6 +72,35 @@ claude-c      # 有加 --with-api 才需要：/login 時選 Anthropic Console �
 
 > 狀態列會使用「執行 `install.py` 的那個 Python」。電腦上有多個 Python 時，請用你想固定使用的那個來執行安裝。
 
+### Linux
+
+```bash
+git clone https://github.com/MFpizza/claude-dotfiles.git
+cd claude-dotfiles
+python3 install.py
+```
+
+Linux 版和 Windows 版有三點不同：
+
+1. **帳號 A 的目錄可以自己指定。** 預設是目前的 `$CLAUDE_CONFIG_DIR`，沒設就用 `~/.claude`；也可以用 `--base` 指定。B、C 會放在它旁邊，名稱加上 `-b`、`-c`：
+
+   ```bash
+   python3 install.py --base ~/.claude-zhon     # A = ~/.claude-zhon，B = ~/.claude-zhon-b
+   ```
+
+   適合多人共用同一個 `$HOME` 的機器（例如 JupyterHub），每個人各用自己的目錄，不會動到別人的 `~/.claude`。
+2. **指令寫進 shell 啟動檔。** `claude-a`、`claude-b`、`claude-c` 是定義在 `claude-accounts.sh` 裡的 shell 函式，安裝時會在 `~/.bashrc` 加一段載入它的區塊；用 zsh 或其他檔案時改用 `--rc ~/.zshrc`。
+   `$HOME` 是多人共用、不想改 `.bashrc` 時，加 `--no-rc`，安裝程式只會印出那幾行，自己放進你會 `source` 的檔案即可：
+
+   ```bash
+   python3 install.py --base ~/.claude-zhon --no-rc
+   ```
+3. **共用資料夾用 symlink**，不是 junction。解除安裝時的注意事項見[解除安裝](#解除安裝)。
+
+裝好後開新的終端機（或 `source ~/.bashrc`），一樣用 `claude-a` / `claude-b` 登入。
+
+> macOS 的登入憑證存在鑰匙圈而不是 `.credentials.json`，狀態列讀不到用量，目前不支援。
+
 ---
 
 ## 日常使用
@@ -90,7 +120,7 @@ claude-b --agent implementer
 claude-a -p "幫我摘要這個 repo"
 ```
 
-原本的 `claude` 指令仍然可用，等同於 `claude-a`。
+原本的 `claude` 指令仍然可用，等同於 `claude-a`（Linux 上則是用當下 `$CLAUDE_CONFIG_DIR` 指的帳號）。
 
 ---
 
@@ -139,6 +169,8 @@ claude-a -p "幫我摘要這個 repo"
 **帳號退訂後**，狀態列仍會顯示最後一次抓到的數值並標上「快取」；若該額度的重置時間已過，會直接顯示 0%。
 
 用量每 2 分鐘最多查詢一次，資料快取在 `~/.claude/usage-cache.json`。
+
+> 本文提到的 `~/.claude`、`~/.claude-b` 指的都是帳號 A、B 的目錄；Linux 上用了 `--base` 時請換成你指定的目錄。
 
 ### 帳號 C（API 計費）
 
@@ -247,7 +279,7 @@ A 和 B 的 session 可以用 ListAgents 互相看到，也能用 SendMessage �
 | 帳號資訊、使用者層級 MCP 設定 | `.claude.json` | 各自獨立 |
 | 輸入歷史（↑ 鍵） | `history.jsonl` | 各自獨立 |
 
-A 用 `~/.claude`，B 用 `~/.claude-b`。B 裡面共用的資料夾是指向 A 的 junction（目錄連結），資料實際上只存一份。
+A 用 `~/.claude`，B 用 `~/.claude-b`。B 裡面共用的資料夾是指向 A 的 junction（目錄連結，Linux 上是 symlink），資料實際上只存一份。
 
 ---
 
@@ -291,11 +323,13 @@ B 原本獨立的資料夾會被併入 A 的對應資料夾，再換成 junction
 
 ### 搬移這個資料夾
 
-settings.json 與 PowerShell profile 都記錄了這個資料夾的絕對路徑，搬移後重新執行：
+settings.json 與 PowerShell profile（Linux 是 `~/.bashrc` 裡的區塊）都記錄了這個資料夾的絕對路徑，搬移後重新執行：
 
 ```powershell
 python install.py
 ```
+
+Linux 上記得帶同樣的參數，例如 `python3 install.py --base ~/.claude-zhon --no-rc`。
 
 `install.py` 可以重複執行，不會產生重複的設定。
 
@@ -347,6 +381,20 @@ python install.py
 4. 刪除 `~/.claude` 裡的 `usage-cache.json`、`statusline-pet.json`、`statusline.json`、`api-cost.json`。
 5. 刪除 `~/.local/bin/claude-a.cmd`、`claude-b.cmd`、`claude-c.cmd`。帳號 C 的 `~/.claude-c` 比照第 3 步的方式刪除。
 
+### Linux
+
+1. 刪除 `~/.bashrc`（或 `--rc` 指定的檔案）裡 `# >>> claude-dotfiles >>>` 到 `# <<< claude-dotfiles <<<` 之間的內容。
+2. 刪除帳號 A 目錄下 `settings.json` 的 `statusLine` 區塊（或用 `settings.json.bak` 還原）。
+3. 先刪 B 裡的 symlink，再刪 B（以預設目錄為例）：
+
+   ```bash
+   find ~/.claude-b -maxdepth 1 -type l -delete
+   rm -rf ~/.claude-b
+   ```
+
+   **不要**用 `rm -rf ~/.claude-b/*/` 這類結尾帶 `/` 的寫法，會跟著 symlink 刪到 A 的資料。C 比照辦理。
+4. 刪除帳號 A 目錄裡的 `usage-cache.json`、`statusline-pet.json`、`statusline.json`、`api-cost.json`。
+
 ---
 
 ## 檔案說明
@@ -355,8 +403,9 @@ python install.py
 |---|---|
 | `usage_statusline.py` | 狀態列。以各帳號自己的 OAuth token 呼叫 `api/oauth/usage` 取得用量並快取 |
 | `claude-accounts.ps1` | 定義 `claude-a`、`claude-b`、`claude-c`，由 PowerShell profile 載入 |
+| `claude-accounts.sh` | Linux 版的 `claude-a`、`claude-b`、`claude-c`（bash / zsh 函式），由 shell 啟動檔載入 |
 | `bin/claude-a.cmd`、`claude-b.cmd`、`claude-c.cmd` | cmd.exe 版的 `claude-a`、`claude-b`、`claude-c`；install.py 在 `~/.local/bin` 放轉呼叫它們的小檔 |
-| `install.py` | 建立 `~/.claude-b`（加 `--with-api` 時還有 `~/.claude-c`）與共用連結、設定 statusLine、寫入 PowerShell profile、放 cmd 指令 |
+| `install.py` | 建立 `~/.claude-b`（加 `--with-api` 時還有 `~/.claude-c`）與共用連結、設定 statusLine、寫入 PowerShell profile、放 cmd 指令；Linux 上改寫入 shell 啟動檔 |
 
 ### 安全與限制
 

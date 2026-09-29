@@ -6,6 +6,7 @@ lapsed subscription) the last successful value is shown, marked with its age.
 The API-billed account has no quota, so its spend is logged in api-cost.json.
 
     python usage_statusline.py --layout compact|full    switch layout
+    python usage_statusline.py --base DIR ...           account A is DIR, not ~/.claude
 """
 import json
 import os
@@ -16,15 +17,21 @@ import urllib.request
 from datetime import datetime, timezone
 
 HOME = os.path.expanduser("~")
+# Account A's config dir; B and C sit next to it with a -b / -c suffix.
+# Default ~/.claude; install.py passes --base when A lives elsewhere (Linux).
+_argv = sys.argv[1:]
+BASE = os.path.join(HOME, ".claude")
+if _argv[:1] == ["--base"] and len(_argv) > 1:
+    BASE, _argv = os.path.expanduser(_argv[1]), _argv[2:]
 ACCOUNTS = [  # (name, config dir, "sub" = Pro/Max quota | "api" = pay-as-you-go)
-    ("A", os.path.join(HOME, ".claude"), "sub"),
-    ("B", os.path.join(HOME, ".claude-b"), "sub"),
-    ("C", os.path.join(HOME, ".claude-c"), "api"),
+    ("A", BASE, "sub"),
+    ("B", BASE + "-b", "sub"),
+    ("C", BASE + "-c", "api"),
 ]
-CACHE_PATH = os.path.join(HOME, ".claude", "usage-cache.json")
-PET_PATH = os.path.join(HOME, ".claude", "statusline-pet.json")
-CONFIG_PATH = os.path.join(HOME, ".claude", "statusline.json")
-LEDGER_PATH = os.path.join(HOME, ".claude", "api-cost.json")
+CACHE_PATH = os.path.join(BASE, "usage-cache.json")
+PET_PATH = os.path.join(BASE, "statusline-pet.json")
+CONFIG_PATH = os.path.join(BASE, "statusline.json")
+LEDGER_PATH = os.path.join(BASE, "api-cost.json")
 LEDGER_DAYS = 62  # keep enough history for "this month"
 LAYOUTS = ("full", "compact")
 CACHE_TTL = 120  # seconds between fetches per account
@@ -317,8 +324,8 @@ def set_layout(layout):
 
 
 def main():
-    if sys.argv[1:2] == ["--layout"]:
-        return set_layout(sys.argv[2] if len(sys.argv) > 2 else "")
+    if _argv[:1] == ["--layout"]:
+        return set_layout(_argv[1] if len(_argv) > 1 else "")
     try:
         session = json.loads(sys.stdin.read() or "{}")
     except ValueError:
