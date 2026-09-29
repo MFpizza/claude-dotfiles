@@ -213,10 +213,10 @@ python usage_statusline.py --layout compact   # 一行的緊湊版
 python usage_statusline.py --layout full      # 預設的完整版
 ```
 
-緊湊版把所有帳號擠在同一行，只顯示百分比；用量達 80% 時才會加上重置時間，`*` 代表是快取資料：
+緊湊版把所有帳號擠在同一行：5 小時額度顯示進度條和百分比，每週額度只顯示百分比；用量達 80% 時才會加上重置時間，`*` 代表是快取資料：
 
 ```
-● A Pro 5h 88% ↻4h13m 週 39% │ ○ B Pro 5h 13% 週 29% │ ○ C API 今日 $0.52 │ Opus 5.5 │ 🐣✨ Lv3
+● A Pro 5h ▰▰▰▰▰▰▰▰▰▱ 88% ↻4h13m 週 39% │ ○ B Pro 5h ▰▱▱▱▱▱▱▱▱▱ 13% 週 29% │ ○ C API 今日 $0.52 │ Opus 5.5 │ 🐣✨ Lv3
 ```
 
 設定存在 `~/.claude/statusline.json`，所有帳號共用，下次狀態列更新時生效。

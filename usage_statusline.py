@@ -233,11 +233,12 @@ def compact_tag(name, plan, is_active):
             + (f" {MUTED}{badge}{RESET}" if badge else ""))
 
 
-def compact_window(label, win, stale):
+def compact_window(label, win, stale, with_bar=False):
     pct, resets_at = window_state(win, stale)
     if pct is None:
         return f"{MUTED}{label} —{RESET}"
-    text = f"{MUTED}{label}{RESET} {level_color(pct)}{BOLD}{pct:.0f}%{RESET}"
+    text = (f"{MUTED}{label}{RESET} " + (bar(pct) + " " if with_bar else "")
+            + f"{level_color(pct)}{BOLD}{pct:.0f}%{RESET}")
     remaining = fmt_remaining(resets_at) if pct >= 80 else ""
     return text + (f" {MUTED}↻{remaining}{RESET}" if remaining else "")
 
@@ -271,7 +272,7 @@ def subscription_account(name, config_dir, is_active, cache, now):
     if stale:
         full += f"{SEP}{MUTED}{ITALIC}快取 · {fmt_age(now - entry['fetched_at'])}{RESET}"
     compact = (compact_tag(name, entry.get("plan"), is_active) + " "
-               + compact_window("5h", entry.get("five_hour"), stale) + " "
+               + compact_window("5h", entry.get("five_hour"), stale, with_bar=True) + " "
                + compact_window("週", entry.get("seven_day"), stale)
                + (f"{MUTED}*{RESET}" if stale else ""))
     return full, compact
