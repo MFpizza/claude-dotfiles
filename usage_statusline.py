@@ -227,6 +227,12 @@ def dot(is_active):
     return f"{ACCENT}●{RESET}" if is_active else f"{MUTED}○{RESET}"
 
 
+def compact_tag(name, plan, is_active):
+    badge = "API" if plan == "api" else (plan or "").capitalize()
+    return (f"{dot(is_active)} {TEXT}{BOLD if is_active else ''}{name}{RESET}"
+            + (f" {MUTED}{badge}{RESET}" if badge else ""))
+
+
 def compact_window(label, win, stale):
     pct, resets_at = window_state(win, stale)
     if pct is None:
@@ -257,14 +263,14 @@ def subscription_account(name, config_dir, is_active, cache, now):
         full = (fmt_tag(name, None, is_active) + SEP
                 + f"{MUTED}{ITALIC}{error or '無資料'}{RESET}"
                 + (f" {TRACK}·{RESET} {MUTED}{hint}{RESET}" if hint else ""))
-        return full, f"{dot(is_active)} {TEXT}{name}{RESET} {MUTED}{ITALIC}{error or '無資料'}{RESET}"
+        return full, f"{compact_tag(name, None, is_active)} {MUTED}{ITALIC}{error or '無資料'}{RESET}"
     stale = error is not None or now - entry["fetched_at"] > CACHE_TTL * 3
     full = (fmt_tag(name, entry.get("plan"), is_active) + SEP
             + fmt_window("5h", entry.get("five_hour"), stale) + SEP
             + fmt_window("週", entry.get("seven_day"), stale))
     if stale:
         full += f"{SEP}{MUTED}{ITALIC}快取 · {fmt_age(now - entry['fetched_at'])}{RESET}"
-    compact = (f"{dot(is_active)} {TEXT}{BOLD if is_active else ''}{name}{RESET} "
+    compact = (compact_tag(name, entry.get("plan"), is_active) + " "
                + compact_window("5h", entry.get("five_hour"), stale) + " "
                + compact_window("週", entry.get("seven_day"), stale)
                + (f"{MUTED}*{RESET}" if stale else ""))
@@ -294,13 +300,13 @@ def record_api_cost(session, today):
     return ledger
 
 
-def api_account(name, is_active, session):
-    """(full line, compact segment) for an API-billed account, or None if never used.
+def api_account(name, config_dir, is_active, session):
+    """(full line, compact segment) for an API-billed account, or None if not set up here.
 
     The API has no quota to show, so this reports spend recorded by this status line."""
     today = datetime.now().strftime("%Y-%m-%d")
     ledger = record_api_cost(session, today) if is_active else load_json(LEDGER_PATH, {})
-    if not ledger and not is_active:
+    if not ledger and not is_active and not os.path.isdir(config_dir):
         return None
     spent = lambda keep: sum(e["base"] + e["cost"] for e in ledger.values() if keep(e["day"]))
     day, month = spent(lambda d: d == today), spent(lambda d: d[:7] == today[:7])
@@ -309,8 +315,7 @@ def api_account(name, is_active, session):
     if is_active and session_cost(session) is not None:
         parts.insert(0, money("本次", session_cost(session)))
     full = fmt_tag(name, "api", is_active) + SEP + SEP.join(parts)
-    compact = (f"{dot(is_active)} {TEXT}{BOLD if is_active else ''}{name}{RESET} "
-               + money("今日", day))
+    compact = compact_tag(name, "api", is_active) + " " + money("今日", day)
     return full, compact
 
 
@@ -340,7 +345,7 @@ def main():
     for name, config_dir, kind in ACCOUNTS:
         is_active = os.path.normcase(os.path.abspath(config_dir)) == active_dir
         if kind == "api":
-            row = api_account(name, is_active, session)
+            row = api_account(name, config_dir, is_active, session)
         else:
             row = subscription_account(name, config_dir, is_active, cache, now)
         if row:

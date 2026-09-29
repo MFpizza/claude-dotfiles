@@ -186,7 +186,7 @@ API 帳號沒有 5 小時或每週額度，所以改顯示**花費**：
 
 - `本次` 只在目前視窗用的是 C 時出現。
 - 金額是狀態列在你使用 C 時自己累計的，數字來自 Claude Code 對每個 session 的費用估算。它只算這台電腦上的使用量，不是 Console 的帳單；實際扣款以 [Console](https://console.anthropic.com/) 為準。
-- 只有目前用的是 C，或這台電腦曾經用 C 記過花費時才會顯示這一行；沒用 C 的電腦完全看不到它。
+- 這台電腦有 C 的目錄（安裝時加了 `--with-api`）就會顯示這一行，還沒花費時是 $0.00；沒裝 C 的電腦完全看不到它。
 - 紀錄存在 `~/.claude/api-cost.json`，保留約兩個月。
 
 ### 帳號 C 走 gateway 或 API token
@@ -216,7 +216,7 @@ python usage_statusline.py --layout full      # 預設的完整版
 緊湊版把所有帳號擠在同一行，只顯示百分比；用量達 80% 時才會加上重置時間，`*` 代表是快取資料：
 
 ```
-● A 5h 88% ↻4h13m 週 39% │ ○ B 5h 13% 週 29% │ ○ C 今日 $0.52 │ Opus 5.5 │ 🐣✨ Lv3
+● A Pro 5h 88% ↻4h13m 週 39% │ ○ B Pro 5h 13% 週 29% │ ○ C API 今日 $0.52 │ Opus 5.5 │ 🐣✨ Lv3
 ```
 
 設定存在 `~/.claude/statusline.json`，所有帳號共用，下次狀態列更新時生效。
