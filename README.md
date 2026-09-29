@@ -99,6 +99,8 @@ Linux 版和 Windows 版有三點不同：
 
 裝好後開新的終端機（或 `source ~/.bashrc`），一樣用 `claude-a` / `claude-b` 登入。
 
+> 平常用 `npx claude` 開 Claude（`claude` 不在 PATH 上）也沒關係：直接輸入 `claude-b`，**不要**打 `npx claude-b`。`claude-b` 是 shell 函式，不是 npm 套件，npx 找不到它，還可能去 npm 下載同名的無關套件。函式在 PATH 上找不到 `claude` 時會自動改用 `npx --no -- claude`（`--no` 只會執行已安裝的版本，不會下載）。要指定其他執行檔時，設定 `CLAUDE_BIN=/路徑/claude`。
+
 > macOS 的登入憑證存在鑰匙圈而不是 `.credentials.json`，狀態列讀不到用量，目前不支援。
 
 ---
