@@ -16,7 +16,7 @@ A's 5-hour limit almost gone? Quit and run `claude-b --continue`: B picks up rig
 - 🔄 **Switch without losing anything**: all accounts share conversations, memory, skills and agents.
 - 📊 **Every account's usage at a glance**: 5-hour and weekly limits with reset countdowns, even for accounts you aren't using. Turns orange when it's nearly used up.
 - ➕ **As many accounts as you like**: subscription (Pro/Max) or API-billed. Only one account? You still get the status line.
-- 🐣 **A pet that grows** with the time you spend in Claude, then is reborn as something else: 16 final forms to collect.
+- 🐣 **A pet that grows** with the time you spend in Claude, then is reborn as something else: 17 final forms to collect.
 - 📏 **Two layouts**: one line per account, or everything on one line:
 
   ```
@@ -84,7 +84,7 @@ It levels up with active time (gaps over 5 minutes don't count): Lv7 takes about
 | 🥚 Sea | 🦐 🐟 🐠 🐡 → 🦑 🐙 or 🦀 🦞 |
 | 🥚 Insects | 🐛 🐜 🐞 🦗 🐝 🦋 |
 | 🌰 Plants | 🌱 🌿 🍀 → 🌷 🌹 🌻, 🌳 🌸 🍒, 🌳 🍏 🍎 or 🍃 🍇 🍷 |
-| 🍼 Mammals | 🐾 → 🐱 🐈 🐆 🐅 🦁, 🐶 🐕 🐺, 🦦 🐬 🐳 🐋 or 🐵 🙈 🐒 🦧 🦍 |
+| 🍼 Mammals | 🐾 → 🐱 🐈 🐆 🐅 🦁, 🐶 🐕 🐺, 🦦 🐬 🐳 🐋, 🐰 🐇 🌕 or 🐵 🙈 🐒 🦧 🦍 |
 
 Each line ends crowned (👑) at Lv20.
 

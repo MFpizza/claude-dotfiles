@@ -113,12 +113,12 @@ func TestRebirthCollectsEveryEnding(t *testing.T) {
 		now = now.Add(time.Hour)
 		return load(t, path)
 	}
-	for i := 0; i < 15; i++ {
+	for i := 0; i < 16; i++ {
 		s := rebirth()
 		seen[ending{s.Line, s.Branch}] = true
 	}
-	if len(seen) != 16 {
-		t.Fatalf("16 lives raised %d different final forms", len(seen))
+	if len(seen) != 17 {
+		t.Fatalf("17 lives raised %d different final forms", len(seen))
 	}
 	for i := 0; i < 30; i++ {
 		prev := load(t, path).Line
@@ -127,7 +127,7 @@ func TestRebirthCollectsEveryEnding(t *testing.T) {
 		}
 	}
 	s := load(t, path)
-	if out := style.Strip(Render(&s, nil, secs(now))); !strings.HasPrefix(out, "⭐45") {
+	if out := style.Strip(Render(&s, nil, secs(now))); !strings.HasPrefix(out, "⭐46") {
 		t.Fatalf("stars: %q", out)
 	}
 }
@@ -175,7 +175,7 @@ func TestEmojiWithinUnicode12(t *testing.T) {
 		}
 		endings += len(l.endings())
 	}
-	if endings != 16 {
+	if endings != 17 {
 		t.Fatalf("%d final forms", endings)
 	}
 }
