@@ -40,8 +40,8 @@ func fmtRemaining(resetsAt string, now time.Time) string {
 	return fmt.Sprintf("%dm", mins)
 }
 
-// timeLeftIcon is a pie of the time left before a window resets, full when it has just
-// started. It never shows ○, which marks the other accounts.
+// timeLeftIcon is a moon showing the time left before a window resets: full when it
+// has just reset, new when it is about to.
 func timeLeftIcon(resetsAt string, period time.Duration, now time.Time) string {
 	t, err := time.Parse(time.RFC3339, resetsAt)
 	if err != nil {
@@ -52,7 +52,7 @@ func timeLeftIcon(resetsAt string, period time.Duration, now time.Time) string {
 		return ""
 	}
 	quarters := int(math.Round(float64(left) / float64(period) * 4))
-	return []string{"◔", "◑", "◕", "●"}[max(1, min(4, quarters))-1]
+	return []string{"🌑", "🌘", "🌗", "🌖", "🌕"}[max(0, min(4, quarters))]
 }
 
 func levelColor(pct float64) string {
