@@ -12,6 +12,7 @@ import (
 var (
 	ErrMain      = errors.New("the main account can't be removed")
 	ErrNoAccount = errors.New("no such account")
+	ErrDirInUse  = errors.New("that folder belongs to another account")
 )
 
 // CommandPath is where the claude-<name> command for an account lives: next to the
@@ -48,6 +49,12 @@ func Add(cfg *config.Config, mainDir, exe string, api bool, dir string) (config.
 	}
 	if dir, err = filepath.Abs(config.ExpandHome(dir)); err != nil {
 		return config.Account{}, nil, err
+	}
+	// Removing an account with its folder deletes that folder, so two accounts must never share one.
+	for _, other := range cfg.Accounts {
+		if config.SamePath(other.Path(), dir) {
+			return config.Account{}, nil, ErrDirInUse
+		}
 	}
 	conflicts, err := Share(mainDir, dir)
 	if err != nil {

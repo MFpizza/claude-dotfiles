@@ -217,6 +217,9 @@ func (a *app) add(api bool, dir string) error {
 	if errors.Is(err, config.ErrFull) {
 		return a.fail("err_full")
 	}
+	if errors.Is(err, accounts.ErrDirInUse) {
+		return a.fail("err_dir_in_use", dir)
+	}
 	if err != nil {
 		return err
 	}

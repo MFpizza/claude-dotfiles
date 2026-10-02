@@ -117,3 +117,18 @@ func TestSyncCommandsRecreatesMissing(t *testing.T) {
 		}
 	}
 }
+
+func TestAddRefusesAnotherAccountsDir(t *testing.T) {
+	cfg, main, exe := setup(t)
+	if _, _, err := Add(cfg, main, exe, false, ""); err != nil {
+		t.Fatal(err)
+	}
+	for _, dir := range []string{main, "~/.claude", main + "-b"} {
+		if _, _, err := Add(cfg, main, exe, false, dir); !errors.Is(err, ErrDirInUse) {
+			t.Errorf("--dir %s: got %v", dir, err)
+		}
+	}
+	if len(cfg.Accounts) != 2 {
+		t.Fatalf("accounts %v", cfg.Names())
+	}
+}

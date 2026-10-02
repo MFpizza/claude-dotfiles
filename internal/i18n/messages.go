@@ -106,6 +106,7 @@ Every account gets a command, claude-a, claude-b, ...; use it like claude.
 	"err_main":         {"account a is the main account and can't be removed", "帳號 a 是主帳號，不能移除"},
 	"err_no_account":   {"no account %s (accounts: %s)", "沒有帳號 %s（目前的帳號：%s）"},
 	"err_full":         {"all 26 letters are in use", "26 個字母都用完了"},
+	"err_dir_in_use":   {"%s already belongs to another account", "%s 已經是其他帳號的資料夾"},
 	"err_layout":       {"layout must be full or compact", "版型只能是 full 或 compact"},
 	"err_lang":         {"language must be auto, en or zh-TW", "語言只能是 auto、en 或 zh-TW"},
 	"err_no_claude":    {"can't find claude: install Claude Code, or set CLAUDE_BIN", "找不到 claude：請先安裝 Claude Code，或設定 CLAUDE_BIN"},
