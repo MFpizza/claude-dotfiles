@@ -179,3 +179,13 @@ func TestEmojiWithinUnicode12(t *testing.T) {
 		t.Fatalf("%d final forms", endings)
 	}
 }
+
+func TestRabbitLine(t *testing.T) {
+	var got []string
+	for _, l := range []int{5, 10, 16, 20} {
+		got = append(got, Body(&Save{Line: "mammal", Branch: "rabbit", Level: l}))
+	}
+	if s := strings.Join(got, " "); s != "🥕 🐰 🐇 👑🐇" {
+		t.Fatalf("rabbit line: %s", s)
+	}
+}

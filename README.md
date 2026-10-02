@@ -85,7 +85,7 @@ It levels up with active time (gaps over 5 minutes don't count): Lv7 takes about
 | 🥚 Sea | 🦐 🐟 🐠 🐡 → 🦑 🐙 or 🦀 🦞 |
 | 🥚 Insects | 🐛 🐜 🐞 🦗 🐝 🦋 |
 | 🌰 Plants | 🌱 🌿 🍀 → 🌷 🌹 🌻, 🌳 🌸 🍒, 🌳 🍏 🍎 or 🍃 🍇 🍷 |
-| 🍼 Mammals | 🐾 → 🐱 🐈 🐆 🐅 🦁, 🐶 🐕 🐺, 🦦 🐬 🐳 🐋, 🐰 🐇 🌕 or 🐵 🙈 🐒 🦧 🦍 |
+| 🍼 Mammals | 🐾 → 🐱 🐈 🐆 🐅 🦁, 🐶 🐕 🐺, 🦦 🐬 🐳 🐋, 🥕 🐰 🐇 or 🐵 🙈 🐒 🦧 🦍 |
 
 Each line ends crowned (👑) at Lv20.
 
