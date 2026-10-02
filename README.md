@@ -1,148 +1,150 @@
 # claude-dotfiles
 
-Claude Code 多帳號切換（兩個訂閱帳號，外加一個選用的 API 計費帳號），加上一條同時顯示所有帳號用量的狀態列。
+用兩個 Claude 訂閱帳號（外加一個選用的 API 帳號）輪流工作：一個額度用完，換另一個接著做同一份對話。狀態列會同時顯示所有帳號的用量。
+
+**完整版**（預設）：
 
 ```
-● A Pro  │ 5h ▰▱▱▱▱▱▱▱▱▱  12% ↻ 4h39m  │ 週 ▰▱▱▱▱▱▱▱▱▱   2% ↻ 1d16h  │ Opus 5.5 │ 🐥✨ Lv5
-○ B Pro  │ 5h ▰▰▰▰▰▰▰▰▰▰ 100% ↻ 2h29m  │ 週 ▰▱▱▱▱▱▱▱▱▱  14% ↻ 6d11h
+● A Pro  │ 5h ▰▰▰▱▱▱▱▱▱▱  31% ↻ 2h05m  │ 週 ▰▰▰▰▰▰▰▱▱▱  67% ↻ 1d16h  │ Opus 5.5 │ 🐔✨ Lv7
+○ B Pro  │ 5h ▰▱▱▱▱▱▱▱▱▱  13% ↻ 3h46m  │ 週 ▰▰▰▰▱▱▱▱▱▱  44% ↻ 3d21h
+○ C API  │ 今日 $0.52 │ 本月 $25.70
 ```
 
-- 兩個帳號**共用** session、記憶、skills、agents：用 A 做到一半，額度用完就換 B 接著做。
-- 狀態列隨時顯示**兩個帳號**的 5 小時與每週用量，包括沒在使用的那個帳號。
-- 選用第三個帳號 C 走 API 計費：兩個訂閱額度都用完時還能繼續，狀態列改顯示花費。
-- 版型可以切換成[一行的緊湊版](#版型)。
-- 支援 Windows 與 [Linux](#linux)。
+**緊湊版**（一行）：
+
+```
+● A Pro 5h ▰▰▰▰▰▰▰▰▰▱ 88% ↻4h13m 週 39% │ ○ B Pro 5h ▰▱▱▱▱▱▱▱▱▱ 13% 週 29% │ ○ C API 今日 $0.52 │ Opus 5.5 │ 🐔✨ Lv7
+```
+
+- A、B 兩個帳號**共用**對話紀錄、記憶、skills、agents，換帳號不會斷掉工作。
+- 帳號 C 走 API 計費，是選用的，給兩個訂閱額度都用完時用。
+- 狀態列最右邊有一隻[小寵物](#小寵物)，會隨著你使用 Claude 的時間長大。
+- 支援 Windows 與 Linux；macOS 不支援，因為登入憑證存在鑰匙圈，狀態列讀不到。
 
 ---
 
 ## 目錄
 
 1. [安裝](#安裝)
-2. [日常使用](#日常使用)
+2. [使用方式](#使用方式)
 3. [看懂狀態列](#看懂狀態列)
-4. [常見情境](#常見情境)
-5. [共用與不共用的東西](#共用與不共用的東西)
-6. [更新與修改](#更新與修改)
-7. [疑難排解](#疑難排解)
-8. [解除安裝](#解除安裝)
-9. [檔案說明](#檔案說明)
+4. [小寵物](#小寵物)
+5. [帳號 C（API 計費）](#帳號-capi-計費)
+6. [更新、疑難排解與解除安裝](#更新疑難排解與解除安裝)
 
 ---
 
 ## 安裝
 
-### 需求
+需要：[Claude Code](https://docs.claude.com/en/docs/claude-code)、Python 3.8 以上（不用裝任何套件）、git。
 
-- Windows（PowerShell 或 cmd 皆可），或 Linux（bash / zsh），見 [Linux](#linux)
-- [Claude Code](https://docs.claude.com/en/docs/claude-code)，`claude` 指令可在終端機直接執行
-- Python 3.8 以上（只用標準函式庫，不必 `pip install`）
-- git
-
-### 步驟
+### Windows
 
 ```powershell
 git clone https://github.com/MFpizza/claude-dotfiles.git
 cd claude-dotfiles
-python install.py
+python install.py              # 也要帳號 C 的話：python install.py --with-api
 ```
-
-安裝完成時會看到：
-
-```
-安裝 claude-dotfiles …
-  ✓ ~/.claude-b 共用 projects, skills, agents, commands, plugins, file-history, sessions
-  ✓ settings.json 已設定 statusLine（原檔備份為 settings.json.bak）
-  ✓ PowerShell profile：C:\Users\<你>\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
-  ✓ cmd.exe 指令：C:\Users\<你>\.local\bin\claude-a.cmd、claude-b.cmd
-```
-
-這台電腦也要用 API 計費的帳號 C 時，改用 `python install.py --with-api`，會多建立 `~/.claude-c` 和 `claude-c.cmd`。沒加這個參數的電腦不會有 C，狀態列也不會顯示它。
-
-### 第一次登入
-
-**開一個新的 PowerShell 或 cmd 視窗**，才會載入新指令。
-
-```powershell
-claude-a      # 進入後輸入 /login，登入第一個帳號
-claude-b      # 進入後輸入 /login，登入第二個帳號
-claude-c      # 有加 --with-api 才需要：/login 時選 Anthropic Console 帳號（API 計費）
-```
-
-帳號 C 走公司 gateway 或 API token、不用 `/login` 時，見[帳號 C 走 gateway 或 API token](#帳號-c-走-gateway-或-api-token)。
-
-每台電腦的每個帳號只需要登入一次。
-
-> 狀態列會使用「執行 `install.py` 的那個 Python」。電腦上有多個 Python 時，請用你想固定使用的那個來執行安裝。
 
 ### Linux
 
 ```bash
 git clone https://github.com/MFpizza/claude-dotfiles.git
 cd claude-dotfiles
-python3 install.py
+python3 install.py             # 也要帳號 C 的話加 --with-api
 ```
 
-Linux 版和 Windows 版有三點不同：
+Linux 可用的參數：
 
-1. **帳號 A 的目錄可以自己指定。** 預設是目前的 `$CLAUDE_CONFIG_DIR`，沒設就用 `~/.claude`；也可以用 `--base` 指定。B、C 會放在它旁邊，名稱加上 `-b`、`-c`：
+| 參數 | 用途 |
+|---|---|
+| `--base ~/.claude-zhon` | 指定帳號 A 的目錄，B、C 會放在旁邊（`~/.claude-zhon-b`）。適合多人共用 `$HOME` 的機器。預設是 `$CLAUDE_CONFIG_DIR`，沒設就用 `~/.claude` |
+| `--rc ~/.zshrc` | 指令要寫進哪個啟動檔，預設 `~/.bashrc` |
+| `--no-rc` | 不改任何啟動檔，只印出要加的幾行，自己貼到想放的地方 |
 
-   ```bash
-   python3 install.py --base ~/.claude-zhon     # A = ~/.claude-zhon，B = ~/.claude-zhon-b
-   ```
+### 登入（每台電腦、每個帳號只要一次）
 
-   適合多人共用同一個 `$HOME` 的機器（例如 JupyterHub），每個人各用自己的目錄，不會動到別人的 `~/.claude`。
-2. **指令寫進 shell 啟動檔。** `claude-a`、`claude-b`、`claude-c` 是定義在 `claude-accounts.sh` 裡的 shell 函式，安裝時會在 `~/.bashrc` 加一段載入它的區塊；用 zsh 或其他檔案時改用 `--rc ~/.zshrc`。
-   `$HOME` 是多人共用、不想改 `.bashrc` 時，加 `--no-rc`，安裝程式只會印出那幾行，自己放進你會 `source` 的檔案即可：
+**開一個新的終端機視窗**，新指令才會生效，然後：
 
-   ```bash
-   python3 install.py --base ~/.claude-zhon --no-rc
-   ```
-3. **共用資料夾用 symlink**，不是 junction。解除安裝時的注意事項見[解除安裝](#解除安裝)。
+```
+claude-a      # 輸入 /login，登入第一個帳號
+claude-b      # 輸入 /login，登入第二個帳號
+claude-c      # 有裝 C 才需要：/login 時選 Anthropic Console 帳號
+```
 
-裝好後開新的終端機（或 `source ~/.bashrc`），一樣用 `claude-a` / `claude-b` 登入。
-
-> 平常用 `npx claude` 開 Claude（`claude` 不在 PATH 上）也沒關係：直接輸入 `claude-b`，**不要**打 `npx claude-b`。`claude-b` 是 shell 函式，不是 npm 套件，npx 找不到它，還可能去 npm 下載同名的無關套件。函式在 PATH 上找不到 `claude` 時會自動改用 `npx --no -- claude`（`--no` 只會執行已安裝的版本，不會下載）。要指定其他執行檔時，設定 `CLAUDE_BIN=/路徑/claude`。
-
-> macOS 的登入憑證存在鑰匙圈而不是 `.credentials.json`，狀態列讀不到用量，目前不支援。
+> 狀態列會用「執行 `install.py` 的那個 Python」。電腦上有好幾個 Python 時，請用你想固定使用的那個來安裝。
 
 ---
 
-## 日常使用
+## 使用方式
 
-| 指令 | 說明 |
+把平常的 `claude` 換成 `claude-a` 或 `claude-b` 就好，後面可以接任何原本的參數：
+
+| 想做的事 | 指令 |
 |---|---|
-| `claude-a` | 用帳號 A 開啟 Claude |
-| `claude-b` | 用帳號 B 開啟 Claude |
-| `claude-c` | 用帳號 C（API 計費）開啟 Claude |
-| `claude-a --resume` | 用帳號 A 挑一個舊 session 接續 |
-| `claude-b --continue` | 用帳號 B 接續這個資料夾最近的 session |
+| 用帳號 A 開 Claude | `claude-a` |
+| 用帳號 B 開 Claude | `claude-b` |
+| 用帳號 C（API 計費）開 Claude | `claude-c` |
+| **A 額度用完，換 B 接著做** | 離開 A（`/exit`），在同一個資料夾執行 `claude-b --continue` |
+| 挑一個以前的對話接著做 | `claude-b --resume`（A、B 開過的對話都會列出來） |
+| 切換成緊湊版狀態列 | `python usage_statusline.py --layout compact` |
+| 切回完整版狀態列 | `python usage_statusline.py --layout full` |
 
-`claude-a`、`claude-b`、`claude-c` 後面可以接任何原本 `claude` 的參數，例如：
+注意事項：
 
-```powershell
-claude-b --agent implementer
-claude-a -p "幫我摘要這個 repo"
-```
+- **可以同時開 A、B 兩個視窗**，額度各算各的。但**不要兩個視窗開同一個對話**，紀錄會互相覆蓋。
+- **設定只從 A 同步到 B。** 主題、模型、hooks 請在 `claude-a` 裡改，下次啟動 `claude-b` 時會自動複製過去；在 B 裡改的會被蓋掉。
+- **skills、agents** 放在 A 的 `~/.claude/skills/`、`~/.claude/agents/`，兩個帳號都看得到。
+- **原本的 `claude` 指令還能用**，等同於 `claude-a`（Linux 上是 `$CLAUDE_CONFIG_DIR` 指的帳號）。
+- Linux 上平常用 `npx claude` 的人，請直接打 `claude-b`，**不要**打 `npx claude-b`，npx 可能會去下載同名的無關套件。`claude` 不在 PATH 上時，指令會自動改用 `npx --no -- claude`（只用已安裝的版本）；要指定執行檔可以設 `CLAUDE_BIN=/路徑/claude`。
 
-原本的 `claude` 指令仍然可用，等同於 `claude-a`（Linux 上則是用當下 `$CLAUDE_CONFIG_DIR` 指的帳號）。
+<details>
+<summary>哪些東西兩個帳號共用？</summary>
+
+| 項目 | 兩帳號之間 |
+|---|---|
+| 對話紀錄、記憶（`projects/`）、`skills/`、`agents/`、`commands/`、`plugins/`、`file-history/`、`sessions/` | 共用（B 的資料夾是指向 A 的連結，資料只存一份） |
+| 設定 `settings.json` | A → B 單向同步 |
+| 登入憑證、帳號資訊與 MCP 設定（`.claude.json`）、輸入歷史 | 各自獨立 |
+
+因為共用 `sessions/`，A、B 的視窗也能用 ListAgents 互相看到、用 SendMessage 互傳訊息。
+</details>
 
 ---
 
 ## 看懂狀態列
 
+### 完整版
+
+每個帳號一行：
+
 ```
-● A Pro  │ 5h ▰▰▰▱▱▱▱▱▱▱  31% ↻ 2h05m  │ 週 ▰▱▱▱▱▱▱▱▱▱   8% ↻ 3d04h  │ Opus 5.5
-└┬┘ └┬┘    └┬┘ └────┬───┘ └┬┘ └──┬──┘    └┬┘                                 └──┬───┘
- │   │      │       │      │     │       每週額度（欄位同左）                   目前模型
- │   │      │       │      │     └ 距離重置還有多久
- │   │      │       │      └ 已使用百分比
- │   │      │       └ 用量條（每格 10%）
- │   │      └ 5 小時額度
- │   └ 訂閱方案
- └ ● 目前這個視窗用的帳號；○ 另一個帳號
+● A Pro  │ 5h ▰▰▰▱▱▱▱▱▱▱  31% ↻ 2h05m  │ 週 ▰▱▱▱▱▱▱▱▱▱   8% ↻ 3d04h  │ Opus 5.5 │ 🐔✨ Lv7
+│ │  │      │  └── 用量條 ─┘  │      │       └ 每週額度（同左）            │          └ 小寵物
+│ │  │      │                 │      └ 距離重置還有多久                     └ 目前模型
+│ │  │      │                 └ 已用百分比
+│ │  │      └ 5 小時額度
+│ │  └ 訂閱方案
+│ └ 帳號
+└ ● 這個視窗正在用的帳號；○ 其他帳號
 ```
 
-### 顏色
+### 緊湊版
+
+所有帳號擠在同一行，用 `│` 分隔：
+
+```
+● A Pro 5h ▰▰▰▰▰▰▰▰▰▱ 88% ↻4h13m 週 39% │ ○ B Pro 5h ▰▱▱▱▱▱▱▱▱▱ 13% 週 29% │ ○ C API 今日 $0.52 │ Opus 5.5 │ 🐔✨ Lv7
+└──────────────── 帳號 A ─────────────┘   └───────────── 帳號 B ─────────┘   └── 帳號 C ──┘   └ 模型 ┘  └ 小寵物
+```
+
+和完整版的差別：
+
+- 每週額度只顯示百分比，沒有用量條。
+- 重置時間只在用量達 80% 時才顯示（例如上面 A 的 `↻4h13m`）。
+- 帳號那一段最後面出現 `*`（例如 `週 39%*`），代表是快取資料。
+
+### 顏色與時間
 
 | 顏色 | 用量 | 意思 |
 |---|---|---|
@@ -150,48 +152,75 @@ claude-a -p "幫我摘要這個 repo"
 | 琥珀 | 50–79% | 注意 |
 | 橘 | 80–100% | 快用完，準備換帳號 |
 
-配色避開紅綠，對色弱友善（搭配 Claude 的 `dark-daltonized` 主題）。
-
-### 時間格式
-
-| 顯示 | 意思 |
-|---|---|
-| `↻ 43m` | 43 分鐘後重置 |
-| `↻ 2h05m` | 2 小時 5 分後重置 |
-| `↻ 3d04h` | 3 天 4 小時後重置 |
+配色避開紅綠，對色弱友善。時間格式：`↻ 43m` 是 43 分鐘後重置，`↻ 2h05m` 是 2 小時 5 分，`↻ 3d04h` 是 3 天 4 小時。
 
 ### 特殊狀態
 
-| 顯示 | 意思 | 處理 |
+| 顯示 | 意思 | 怎麼辦 |
 |---|---|---|
-| `│ 快取 · 3 天前` | 抓不到最新資料，顯示的是最後一次成功的數值 | 通常是網路問題、token 失效或已退訂；不處理也沒關係 |
-| `未登入 · 執行 claude-b 後 /login` | 這個帳號在這台電腦還沒登入 | 照提示登入 |
-| `token 過期` | 目前視窗的帳號 token 剛好過期 | 送出任何訊息後 Claude 會自動刷新 |
-| `HTTP 401` / `HTTP 403` | 伺服器拒絕，多半是登入失效 | 用該帳號執行 `/login` |
-| `5h ▱▱▱▱▱▱▱▱▱▱    —` | 伺服器沒有回傳這個額度 | 常見於未訂閱的帳號 |
+| `快取 · 3 天前` | 抓不到最新資料，顯示最後一次成功的數值 | 通常是網路、token 失效或已退訂，不處理也沒關係 |
+| `未登入 · 執行 claude-b 後 /login` | 這台電腦的這個帳號還沒登入 | 照提示登入 |
+| `token 過期` | 目前視窗帳號的 token 剛好過期 | 送出任何訊息後會自動刷新 |
+| `HTTP 401` / `HTTP 403` | 多半是登入失效 | 用該帳號執行 `/login` |
+| `5h ▱▱▱▱▱▱▱▱▱▱ —` | 伺服器沒回傳這個額度 | 常見於未訂閱的帳號 |
 
-**帳號退訂後**，狀態列仍會顯示最後一次抓到的數值並標上「快取」；若該額度的重置時間已過，會直接顯示 0%。
+用量每 2 分鐘最多查一次。版型設定存在 `~/.claude/statusline.json`，所有帳號共用。
 
-用量每 2 分鐘最多查詢一次，資料快取在 `~/.claude/usage-cache.json`。
+> 本文的 `~/.claude`、`~/.claude-b` 指帳號 A、B 的目錄；Linux 上用了 `--base` 的話，請換成你指定的目錄。
 
-> 本文提到的 `~/.claude`、`~/.claude-b` 指的都是帳號 A、B 的目錄；Linux 上用了 `--base` 時請換成你指定的目錄。
+---
 
-### 帳號 C（API 計費）
+## 小寵物
 
-API 帳號沒有 5 小時或每週額度，所以改顯示**花費**：
+狀態列最右邊住著一隻會長大的寵物，例如 `🐔✨ Lv7`。A、B 共用同一隻。
+
+### 成長
+
+經驗值是**使用 Claude 的活躍時間**：狀態列兩次刷新間隔不到 5 分鐘才算，視窗掛著不動不算。越後面越難升：
+
+| 等級 | Lv3 | Lv5 | Lv7 | Lv10 | Lv13 | Lv16 | Lv20 |
+|---|---|---|---|---|---|---|---|
+| 累積時數 | 0.2 | 1.4 | 4.7 | 16 | 38 | 74 | 150 |
+
+升級後 10 分鐘內會顯示 `🎉`，等級數字也會亮起來：`🐔✨🎉 Lv8`。
+
+### 心情
+
+跟著目前對話的 context 用量變化：`✨` 精神飽滿（< 30%）→ 無符號 → `💦` 有點累（60% 以上）→ `💤` 撐不住了（85% 以上，該 `/compact` 或開新對話）。
+
+### 轉生與成長線
+
+滿 150 小時（Lv20）就會轉生：從頭開始，前面多一顆 `⭐`（4 次以上顯示成 `⭐4`），多出來的時數會帶到下一世。
+
+下一世會**隨機**變成下面其中一系。看起始型態就知道是哪一類：🥚 卵生、🌰 植物、🍼 哺乳。有分支的系會在分歧點隨機走其中一支，而且優先抽還沒養到最後的，收集完 16 種最終型態才會重複。
+
+| 成長線 | 前期 | 分支（→ 最終型態） |
+|---|---|---|
+| 鳥系（第一世） | 🥚 🐣 🐥 🐔 | 家禽 🐓 🦃 🦚 👑🦚 ／ 猛禽 🐦 🦉 🦅 👑🦅 |
+| 水鳥系 | 🥚 🐣 🐥 🦆 🐧 🦩 🦢 👑🦢 | 不分歧 |
+| 爬蟲系 | 🥚 🦎 🐢 🐍 🐊 | 恐龍 🦕 🦖 👑🦖 ／ 龍 🐲 🐉 👑🐉 |
+| 深海系 | 🥚 🦐 🐟 🐠 🐡 | 頭足 🦑 🐙 👑🐙 ／ 甲殼 🦀 🦞 👑🦞 |
+| 昆蟲系 | 🥚 🐛 🐜 🐞 🦗 🐝 🦋 👑🦋 | 不分歧 |
+| 植物系 | 🌰 🌱 🌿 🍀 | 花 🌷 🌹 🌻 👑🌻 ／ 櫻 🌳 🌸 🍒 👑🌸 ／ 蘋果 🌳 🍏 🍎 👑🍎 ／ 葡萄 🍃 🍇 🍷 👑🍷 |
+| 哺乳系 | 🍼 🐾 | 貓科 🐱 🐈 🐆 🐅 🦁 👑🦁 ／ 犬科 🐶 🐕 🐺 👑🐺 ／ 海獸 🦦 🐬 🐳 🐋 👑🐋 ／ 靈長 🐵 🙈 🐒 🦧 🦍 👑🦍 |
+
+每個型態從哪一級開始，寫在 `usage_statusline.py` 的 `PET_LINES`。紀錄存在 `~/.claude/statusline-pet.json`，刪掉就從頭開始。
+
+---
+
+## 帳號 C（API 計費）
+
+API 帳號沒有額度，所以狀態列改顯示**花費**：
 
 ```
 ● C API  │ 本次 $0.42 │ 今日 $3.10 │ 本月 $25.70
 ```
 
-- `本次` 只在目前視窗用的是 C 時出現。
-- 金額是狀態列在你使用 C 時自己累計的，數字來自 Claude Code 對每個 session 的費用估算。它只算這台電腦上的使用量，不是 Console 的帳單；實際扣款以 [Console](https://console.anthropic.com/) 為準。
-- 這台電腦有 C 的目錄（安裝時加了 `--with-api`）就會顯示這一行，還沒花費時是 $0.00；沒裝 C 的電腦完全看不到它。
-- 紀錄存在 `~/.claude/api-cost.json`，保留約兩個月。
+- `本次` 只在目前視窗用 C 時出現。
+- 金額是狀態列根據 Claude Code 的費用估算自己累計的，只算這台電腦。實際扣款以 [Console](https://console.anthropic.com/) 為準。
+- 安裝時沒加 `--with-api` 的電腦不會顯示 C。
 
-### 帳號 C 走 gateway 或 API token
-
-有些 API 帳號不是用 `/login` 登入，而是靠 `ANTHROPIC_BASE_URL`、`ANTHROPIC_AUTH_TOKEN` 這類環境變數連到公司的 gateway。這些設定**不能**寫進 C 的 `settings.json`，因為每次啟動都會被 A 的設定蓋掉。請改放在帳號目錄裡的 `account-settings.json`：
+**走公司 gateway 或 API token、不用 `/login` 的話**，把環境變數寫在帳號目錄裡的 `account-settings.json`（例如 `~/.claude-c/account-settings.json`）。不能寫進 `settings.json`，因為它每次啟動都會被 A 的設定蓋掉：
 
 ```json
 {
@@ -202,249 +231,61 @@ API 帳號沒有 5 小時或每週額度，所以改顯示**花費**：
 }
 ```
 
-- `claude-a/b/c` 啟動時，只要帳號目錄裡有這個檔，就會用 `--settings` 疊加載入，也不會覆蓋它。B 也適用。
-- 檔案裡有 token，Linux 上請 `chmod 600`，也不要放進任何 git repo。
-- 走 gateway 時，狀態列的花費是 Claude Code 照官方定價估的，不一定等於 gateway 實際的計費。
-
-### 版型
-
-```powershell
-python usage_statusline.py --layout compact   # 一行的緊湊版
-python usage_statusline.py --layout full      # 預設的完整版
-```
-
-緊湊版把所有帳號擠在同一行：5 小時額度顯示進度條和百分比，每週額度只顯示百分比；用量達 80% 時才會加上重置時間，`*` 代表是快取資料：
-
-```
-● A Pro 5h ▰▰▰▰▰▰▰▰▰▱ 88% ↻4h13m 週 39% │ ○ B Pro 5h ▰▱▱▱▱▱▱▱▱▱ 13% 週 29% │ ○ C API 今日 $0.52 │ Opus 5.5 │ 🐣✨ Lv3
-```
-
-設定存在 `~/.claude/statusline.json`，所有帳號共用，下次狀態列更新時生效。
-
-### 小寵物
-
-第一行最右邊住著一隻會長大的小寵物，例如 `🐥✨ Lv5`。
-
-**成長**：經驗值是使用 Claude 的活躍時數。狀態列兩次刷新間隔不到 5 分鐘才算，你打字和 Claude 工作的時間都算，視窗掛著不動不算。等級 = 1 + 19 × ∛(時數 ÷ 150)，越後面越難升。兩個帳號共用同一隻。
-
-| 等級 | Lv1 | Lv3 | Lv5 | Lv7 | Lv10 | Lv13 | Lv16 | Lv20 |
-|---|---|---|---|---|---|---|---|---|
-| 需要的時數 | 0 | 0.2 | 1.4 | 4.7 | 16 | 38 | 74 | 150 |
-
-**轉生**：累積滿 150 小時（Lv20）後會重新開始，前面多一顆 `⭐`（轉生 4 次以上顯示成 `⭐4`），超出的時數會帶到下一世。下一世隨機抽一系，起始型態代表牠是哪一類：🥚 卵生、🌰 植物、🍼 哺乳。有分支的系會在分歧點長成其中一支，同樣隨機。抽系和抽分支時都優先抽還沒養到最後的；16 種最終型態都收集完之後，就從目前這一系以外的系隨機挑。
-
-| 成長線 | 前期（共用） | 分支 |
-|---|---|---|
-| 鳥系（第一世） | 🥚 Lv1 → 🐣 Lv3 → 🐥 Lv5 → 🐔 Lv7 | 家禽：🐓 Lv10 → 🦃 Lv13 → 🦚 Lv16 → 👑🦚 Lv20<br>猛禽：🐦 Lv10 → 🦉 Lv13 → 🦅 Lv16 → 👑🦅 Lv20 |
-| 水鳥系 | 🥚 Lv1 → 🐣 Lv3 → 🐥 Lv5 → 🦆 Lv7 → 🐧 Lv10 → 🦩 Lv13 → 🦢 Lv16 → 👑🦢 Lv20 | 不分歧 |
-| 爬蟲系 | 🥚 Lv1 → 🦎 Lv3 → 🐢 Lv5 → 🐍 Lv7 → 🐊 Lv10 | 恐龍：🦕 Lv13 → 🦖 Lv16 → 👑🦖 Lv20<br>龍：🐲 Lv13 → 🐉 Lv16 → 👑🐉 Lv20 |
-| 深海系 | 🥚 Lv1 → 🦐 Lv3 → 🐟 Lv5 → 🐠 Lv7 → 🐡 Lv10 | 頭足：🦑 Lv13 → 🐙 Lv16 → 👑🐙 Lv20<br>甲殼：🦀 Lv13 → 🦞 Lv16 → 👑🦞 Lv20 |
-| 昆蟲系 | 🥚 Lv1 → 🐛 Lv3 → 🐜 Lv5 → 🐞 Lv7 → 🦗 Lv10 → 🐝 Lv13 → 🦋 Lv16 → 👑🦋 Lv20 | 不分歧 |
-| 植物系 | 🌰 Lv1 → 🌱 Lv3 → 🌿 Lv5 → 🍀 Lv7 | 花：🌷 Lv10 → 🌹 Lv13 → 🌻 Lv16 → 👑🌻 Lv20<br>櫻：🌳 Lv10 → 🌸 Lv13 → 🍒 Lv16 → 👑🌸 Lv20<br>蘋果：🌳 Lv10 → 🍏 Lv13 → 🍎 Lv16 → 👑🍎 Lv20<br>葡萄：🍃 Lv10 → 🍇 Lv13 → 🍷 Lv16 → 👑🍷 Lv20 |
-| 哺乳系 | 🍼 Lv1 → 🐾 Lv3 | 貓科：🐱 Lv5 → 🐈 Lv7 → 🐆 Lv10 → 🐅 Lv13 → 🦁 Lv16 → 👑🦁 Lv20<br>犬科：🐶 Lv5 → 🐕 Lv10 → 🐺 Lv16 → 👑🐺 Lv20<br>海獸：🦦 Lv5 → 🐬 Lv10 → 🐳 Lv13 → 🐋 Lv16 → 👑🐋 Lv20<br>靈長：🐵 Lv5 → 🙈 Lv7 → 🐒 Lv10 → 🦧 Lv13 → 🦍 Lv16 → 👑🦍 Lv20 |
-
-emoji 都在 Unicode 12（2019）以內。像 🦭、🦣、🪿 這些比較新的 emoji，在不少終端機會顯示成方框，所以沒有用。
-
-**升級**或轉生後的 10 分鐘內會顯示 `🎉`，等級數字也會亮起來，例如 `🐔✨🎉 Lv8`。
-
-**心情**跟著目前 session 的 context 用量變化：
-
-| 顯示 | context 用量 | 意思 |
-|---|---|---|
-| `🐥✨` | 0–29% | 精神飽滿 |
-| `🐥` | 30–59% | 普通 |
-| `🐥💦` | 60–84% | 有點累 |
-| `🐥💤` | 85% 以上 | 撐不住了，該 `/compact` 或開新 session |
-
-成長紀錄存在 `~/.claude/statusline-pet.json`，包含時數、這一世的分支（長到分歧點前不會顯示）與過去每一世的成長線，刪掉就會從蛋重新開始。舊版以 session 數計算的存檔會自動換算，等級不變。
+這個檔裡有 token：Linux 上請 `chmod 600`，也不要放進任何 git repo。B 也可以用同樣的方式設定。
 
 ---
 
-## 常見情境
+## 更新、疑難排解與解除安裝
 
-### A 的 5 小時額度用完了，想換 B 繼續同一份工作
+### 更新
 
-1. 在 A 的視窗按 `Ctrl+C` 兩次（或輸入 `/exit`）離開。
-2. 在同一個資料夾執行：
-
-   ```powershell
-   claude-b --continue
-   ```
-
-B 會接著 A 最後的對話繼續，前面的上下文都在。
-
-### 想挑一個比較舊的 session
-
-```powershell
-claude-b --resume
 ```
-
-清單裡會同時看到 A 和 B 開過的 session。
-
-### 同時開兩個視窗，一個 A 一個 B
-
-可以，兩個帳號的額度各自計算。**但不要讓兩個視窗同時開啟同一個 session**，對話紀錄會互相覆蓋。
-
-A 和 B 的 session 可以用 ListAgents 互相看到，也能用 SendMessage 互傳訊息（本機 session 才行；claude.ai 上的 Remote Control session 仍只看得到同一個帳號的）。
-
-### 新增 skill 或 agent
-
-放在 `~/.claude/skills/` 或 `~/.claude/agents/`，兩個帳號都會看到。專案內的 `.claude/agents/` 本來就跟著 repo 走，兩個帳號也都看得到。
-
-### 修改 Claude 設定（主題、模型、hooks…）
-
-在 `claude-a` 裡用 `/config` 修改，或直接編輯 `~/.claude/settings.json`。下次啟動 `claude-b` 時會自動同步過去。
-
-> 在 `claude-b` 裡改的設定**不會**回傳給 A，而且下次啟動 B 時會被 A 的設定覆蓋。
-
----
-
-## 共用與不共用的東西
-
-| 項目 | 位置 | 兩帳號之間 |
-|---|---|---|
-| session 對話紀錄、記憶 | `projects/` | 共用 |
-| skills | `skills/` | 共用 |
-| 使用者層級 agents | `agents/` | 共用 |
-| 自訂斜線指令 | `commands/` | 共用 |
-| plugins | `plugins/` | 共用 |
-| 檔案編輯紀錄（還原用） | `file-history/` | 共用 |
-| 執行中 session 的登記（ListAgents、SendMessage 用） | `sessions/` | 共用 |
-| 設定 | `settings.json` | A → B 單向同步 |
-| 登入憑證 | `.credentials.json` | 各自獨立 |
-| 帳號資訊、使用者層級 MCP 設定 | `.claude.json` | 各自獨立 |
-| 輸入歷史（↑ 鍵） | `history.jsonl` | 各自獨立 |
-
-A 用 `~/.claude`，B 用 `~/.claude-b`。B 裡面共用的資料夾是指向 A 的 junction（目錄連結，Linux 上是 symlink），資料實際上只存一份。
-
----
-
-## 更新與修改
-
-### 其他電腦取得最新版
-
-```powershell
 cd claude-dotfiles
 git pull
 ```
 
-狀態列與 `claude-a`／`claude-b` 都直接讀這個資料夾裡的檔案，**拉下來就生效**，不必重新安裝。
+拉下來就生效，不用重新安裝。只有兩種情況要重跑 `install.py`（帶同樣的參數；重複執行沒關係）：新版加了共用資料夾，這時要先關掉所有 `claude-b` 視窗；或是你搬移了這個資料夾。
 
-例外是新增了共用資料夾的版本（例如加入 `sessions/` 共用那一版），需要**先關掉所有 `claude-b` 視窗**，再重跑：
+想改顏色、用量條長度、帳號名稱，都在 `usage_statusline.py` 開頭（`LOW`／`MID`／`HIGH`、`BAR_WIDTH`、`ACCOUNTS`）。改完可以用 `echo '{}' | python usage_statusline.py` 預覽。
 
-```powershell
-python install.py
-```
+### 疑難排解
 
-B 原本獨立的資料夾會被併入 A 的對應資料夾，再換成 junction。
-
-### 修改設計
-
-改 `usage_statusline.py` 後可以先在終端機預覽：
-
-```powershell
-'{}' | python usage_statusline.py
-```
-
-常改的地方都在檔案開頭：
-
-| 想改的 | 變數 |
+| 問題 | 處理 |
 |---|---|
-| 用量條長度 | `BAR_WIDTH` |
-| 顏色 | `LOW`、`MID`、`HIGH`、`ACCENT` 等（`#RRGGBB`） |
-| 帳號顯示名稱 | `ACCOUNTS` 裡的 `"A"`、`"B"` |
-| 查詢間隔（秒） | `CACHE_TTL` |
+| 找不到 `claude-a` | 確認是**新開的**視窗。PowerShell：`notepad $PROFILE` 裡要有 `# >>> claude-dotfiles >>>` 區塊。Linux：啟動檔裡要有同名區塊，或執行 `source ~/.bashrc` |
+| PowerShell 說「已停用指令碼執行」 | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
+| cmd 找不到指令 | 確認 `~/.local/bin` 裡有 `claude-a.cmd`，而且這個資料夾在 PATH 上；沒有的話重跑 `install.py` |
+| 狀態列沒出現 | 重開 Claude；確認 `~/.claude/settings.json` 有 `statusLine`，裡面的 Python 路徑也存在；用上面的預覽指令看看有沒有錯誤 |
+| 出現方框或問號 | 換用 Windows Terminal 之類支援 Unicode 的終端機，字型例如 Cascadia Code |
+| 安裝時「有同名的項目，未建立連結」 | A、B 有同名檔案，安裝程式不會覆蓋。決定好要留哪一份後，刪掉 `~/.claude-b` 裡的那個資料夾，再重跑 `install.py` |
+| B 的設定跟 A 不一樣 | 設定只在用 `claude-b` 啟動時同步；直接設 `CLAUDE_CONFIG_DIR` 再執行 `claude` 不會同步 |
 
-改好後 commit 並 push，其他電腦 `git pull` 即可。
+### 解除安裝
 
-### 搬移這個資料夾
-
-settings.json 與 PowerShell profile（Linux 是 `~/.bashrc` 裡的區塊）都記錄了這個資料夾的絕對路徑，搬移後重新執行：
-
-```powershell
-python install.py
-```
-
-Linux 上記得帶同樣的參數，例如 `python3 install.py --base ~/.claude-zhon --no-rc`。
-
-`install.py` 可以重複執行，不會產生重複的設定。
-
----
-
-## 疑難排解
-
-**找不到 `claude-a` 指令**
-- 確認是**新開的** PowerShell 視窗。
-- 執行 `notepad $PROFILE`，確認裡面有 `# >>> claude-dotfiles >>>` 區塊。
-- 若出現「因為這個系統上已停用指令碼執行」：
-
-  ```powershell
-  Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-  ```
-
-- 如果你用的是 PowerShell 7（`pwsh`），而安裝時它還沒裝，請重跑 `python install.py`。
-- 在 cmd 裡：確認 `~/.local/bin` 裡有 `claude-a.cmd`、`claude-b.cmd`，且這個資料夾在 PATH 上（Claude Code 安裝時會加入）。沒有的話重跑 `python install.py`。
-
-**狀態列沒出現**
-- 重新啟動 Claude。
-- 確認 `~/.claude/settings.json` 裡有 `statusLine`，且其中的 Python 路徑存在。
-- 手動執行預覽指令（見[修改設計](#修改設計)），看是否有錯誤訊息。
-
-**狀態列出現亂碼（方塊、問號）**
-- 換用支援 Unicode 的終端機，例如 Windows Terminal。
-- 字型需要有 `▰ ▱ ● ○ ↻ │` 這些字元，例如 Cascadia Code。
-
-**建立 junction 失敗**
-- `install.py` 會把 `~/.claude-b` 裡的一般資料夾併入 `~/.claude` 的對應位置。若出現「有同名的項目，未建立連結」，代表兩邊有同名檔案，自動合併時不會覆蓋。請手動決定保留哪一份，把 `~/.claude-b` 裡的那個資料夾清空並刪除後，再重跑 `install.py`。
-
-**B 的設定跟 A 不一樣**
-- B 的 `settings.json` 每次啟動 `claude-b` 時才會從 A 複製。若直接執行 `$env:CLAUDE_CONFIG_DIR=...; claude`，就不會同步。
-
----
-
-## 解除安裝
-
-1. 執行 `notepad $PROFILE`，刪除 `# >>> claude-dotfiles >>>` 到 `# <<< claude-dotfiles <<<` 之間的內容。
-2. 編輯 `~/.claude/settings.json`，刪除 `statusLine` 區塊（或用 `settings.json.bak` 還原）。
-3. 刪除 `~/.claude-b`，不再需要帳號 B 的話：
+1. 刪掉啟動檔裡 `# >>> claude-dotfiles >>>` 到 `# <<< claude-dotfiles <<<` 之間的內容。Windows 是 `notepad $PROFILE`，Linux 是 `~/.bashrc` 或你用 `--rc` 指定的檔案。
+2. 刪掉 `~/.claude/settings.json` 裡的 `statusLine` 區塊，或用 `settings.json.bak` 還原。
+3. 刪除 B（C 也一樣）。**B 裡面是指向 A 的連結，刪錯方式會連 A 的資料一起刪掉：**
 
    ```powershell
+   # Windows：只用這個指令，不要用檔案總管或 Remove-Item -Recurse
    cmd /c rmdir /s /q "$HOME\.claude-b"
    ```
 
-   `rmdir` 只會移除 junction 本身，**不會**刪到 `~/.claude` 裡共用的資料。
-   請不要用檔案總管或 `Remove-Item -Recurse` 刪除，某些情況下會連同目標資料一起刪除。
-4. 刪除 `~/.claude` 裡的 `usage-cache.json`、`statusline-pet.json`、`statusline.json`、`api-cost.json`。
-5. 刪除 `~/.local/bin/claude-a.cmd`、`claude-b.cmd`、`claude-c.cmd`。帳號 C 的 `~/.claude-c` 比照第 3 步的方式刪除。
-
-### Linux
-
-1. 刪除 `~/.bashrc`（或 `--rc` 指定的檔案）裡 `# >>> claude-dotfiles >>>` 到 `# <<< claude-dotfiles <<<` 之間的內容。
-2. 刪除帳號 A 目錄下 `settings.json` 的 `statusLine` 區塊（或用 `settings.json.bak` 還原）。
-3. 先刪 B 裡的 symlink，再刪 B（以預設目錄為例）：
-
    ```bash
+   # Linux：先刪連結再刪目錄，不要用 rm -rf ~/.claude-b/*/
    find ~/.claude-b -maxdepth 1 -type l -delete
    rm -rf ~/.claude-b
    ```
+4. 刪掉 `~/.claude` 裡的 `usage-cache.json`、`statusline-pet.json`、`statusline.json`、`api-cost.json`。Windows 也要刪 `~/.local/bin/claude-a.cmd`、`claude-b.cmd`、`claude-c.cmd`。
 
-   **不要**用 `rm -rf ~/.claude-b/*/` 這類結尾帶 `/` 的寫法，會跟著 symlink 刪到 A 的資料。C 比照辦理。
-4. 刪除帳號 A 目錄裡的 `usage-cache.json`、`statusline-pet.json`、`statusline.json`、`api-cost.json`。
-
----
-
-## 檔案說明
+### 檔案與安全
 
 | 檔案 | 用途 |
 |---|---|
-| `usage_statusline.py` | 狀態列。以各帳號自己的 OAuth token 呼叫 `api/oauth/usage` 取得用量並快取 |
-| `claude-accounts.ps1` | 定義 `claude-a`、`claude-b`、`claude-c`，由 PowerShell profile 載入 |
-| `claude-accounts.sh` | Linux 版的 `claude-a`、`claude-b`、`claude-c`（bash / zsh 函式），由 shell 啟動檔載入 |
-| `bin/claude-a.cmd`、`claude-b.cmd`、`claude-c.cmd` | cmd.exe 版的 `claude-a`、`claude-b`、`claude-c`；install.py 在 `~/.local/bin` 放轉呼叫它們的小檔 |
-| `install.py` | 建立 `~/.claude-b`（加 `--with-api` 時還有 `~/.claude-c`）與共用連結、設定 statusLine、寫入 PowerShell profile、放 cmd 指令；Linux 上改寫入 shell 啟動檔 |
+| `install.py` | 建立 B／C 的目錄與共用連結、設定狀態列、安裝 `claude-a/b/c` 指令 |
+| `usage_statusline.py` | 狀態列與小寵物 |
+| `claude-accounts.ps1`、`claude-accounts.sh`、`bin/*.cmd` | PowerShell、bash/zsh、cmd 版的 `claude-a/b/c` |
 
-### 安全與限制
-
-- repo 內**沒有**任何憑證；憑證只存在各電腦的 `~/.claude*/.credentials.json`，也不應該被加進 repo。
-- `api/oauth/usage` 是 Claude Code 內部使用的端點，不是公開 API，Claude Code 改版後可能失效。
-- 沒在使用的帳號 token 過期時，狀態列會替它刷新；正在執行的帳號由 Claude 自己刷新，避免互相衝突。
+- repo 裡**沒有**任何憑證。憑證只存在各電腦的 `~/.claude*/.credentials.json`。
+- 用量是呼叫 Claude Code 內部用的 `api/oauth/usage` 取得的。它不是公開 API，Claude Code 改版後可能會失效。
+- 沒在用的帳號 token 過期時，狀態列會替它刷新；正在用的帳號由 Claude 自己刷新，兩邊不會衝突。
