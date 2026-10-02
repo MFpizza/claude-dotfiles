@@ -75,7 +75,7 @@ Good to know:
 
 ### The pet
 
-It levels up with active time (gaps over 5 minutes don't count): Lv7 takes about 5 hours, Lv20 150. At Lv20 it is reborn with a ⭐ as a random new kind, preferring ones you haven't raised. Its mood follows the conversation's context: ✨ fresh, 💦 tired, 💤 time to `/compact`.
+It levels up with active time (gaps over 5 minutes don't count): Lv7 takes about 5 hours, Lv20 150. At Lv20 it wears a crown 👑 for 15 more active hours, then is reborn with a ⭐ as a random new kind, preferring ones you haven't raised. Its mood follows the conversation's context: ✨ fresh, 💦 tired, 💤 time to `/compact`.
 
 | Line | Grows into |
 |---|---|

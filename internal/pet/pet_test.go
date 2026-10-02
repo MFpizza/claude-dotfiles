@@ -107,7 +107,7 @@ func TestRebirthCollectsEveryEnding(t *testing.T) {
 	seen := map[ending]bool{{"bird", "raptor"}: true}
 	rebirth := func() Save {
 		s := load(t, path)
-		s.Hours, s.Tick = hours(LifeHours-1e-4), secs(now)-60
+		s.Hours, s.Tick = hours(RebirthHours-1e-4), secs(now)-60
 		fsutil.WriteJSON(path, s, false)
 		Update(path, nil, now, rnd)
 		now = now.Add(time.Hour)
@@ -187,5 +187,23 @@ func TestRabbitLine(t *testing.T) {
 	}
 	if s := strings.Join(got, " "); s != "🥕 🐰 🐇 👑🐇" {
 		t.Fatalf("rabbit line: %s", s)
+	}
+}
+
+func TestCrownStaysBeforeRebirth(t *testing.T) {
+	rnd := rand.New(rand.NewSource(1))
+	path := petFile(t, Save{Life: 1, Line: "bird", Branch: "fowl", Hours: hours(LifeHours - 1e-4), Level: 19, Tick: secs(t0) - 60})
+	if out := style.Strip(Update(path, nil, t0, rnd)); !strings.HasPrefix(out, "👑🦚") {
+		t.Fatalf("at Lv20: %q", out)
+	}
+	if s := load(t, path); s.Life != 1 || s.Level != MaxLevel {
+		t.Fatalf("reborn too early: life %d level %d", s.Life, s.Level)
+	}
+	s := load(t, path)
+	s.Hours, s.Tick = hours(RebirthHours-1e-4), secs(t0)
+	fsutil.WriteJSON(path, s, false)
+	Update(path, nil, t0.Add(time.Minute), rnd)
+	if s := load(t, path); s.Life != 2 || s.Level != 1 {
+		t.Fatalf("after the crown: life %d level %d", s.Life, s.Level)
 	}
 }

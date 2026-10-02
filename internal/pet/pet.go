@@ -1,6 +1,6 @@
 // Package pet is the status line pet. It grows with active Claude time
-// (Lv = 1 + 19 * cbrt(hours / LifeHours)); at Lv20 it is reborn with a ⭐ as a random
-// line, preferring final forms not raised yet.
+// (Lv = 1 + 19 * cbrt(hours / LifeHours)); after RebirthHours it is reborn with a ⭐ as
+// a random line, preferring final forms not raised yet.
 package pet
 
 import (
@@ -15,10 +15,11 @@ import (
 )
 
 const (
-	LifeHours   = 150.0
-	MaxLevel    = 20
-	ActiveGap   = 300.0 // seconds; refreshes further apart count as idle
-	LevelUpSecs = 600.0 // how long 🎉 stays after a level-up or rebirth
+	LifeHours    = 150.0
+	RebirthHours = LifeHours + 15 // Lv20 wears its crown for 15 active hours first
+	MaxLevel     = 20
+	ActiveGap    = 300.0 // seconds; refreshes further apart count as idle
+	LevelUpSecs  = 600.0 // how long 🎉 stays after a level-up or rebirth
 )
 
 type Past struct {
@@ -165,8 +166,8 @@ func feed(s *Save, now float64, rnd *rand.Rand) {
 		return
 	}
 	h := *s.Hours + gap/3600
-	for h >= LifeHours {
-		h -= LifeHours
+	for h >= RebirthHours {
+		h -= RebirthHours
 		s.Past = append(s.Past, Past{Line: s.Line, Branch: s.Branch,
 			Ended: time.Unix(int64(now), 0).Format("2006-01-02")})
 		s.Line, s.Branch = nextLine(s, rnd)
