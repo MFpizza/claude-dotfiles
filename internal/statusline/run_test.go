@@ -205,11 +205,14 @@ func TestTimeLeftIcon(t *testing.T) {
 		want string
 	}{
 		{5 * time.Hour, "🌕"},
-		{263 * time.Minute, "🌕"}, // 7/8 of 5h left
-		{4 * time.Hour, "🌖"},
-		{150 * time.Minute, "🌗"},
-		{1 * time.Hour, "🌘"},
-		{30 * time.Minute, "🌑"},
+		{4 * time.Hour, "🌕"},     // 80% left
+		{225 * time.Minute, "🌖"}, // exactly 75%
+		{3 * time.Hour, "🌖"},     // 60%
+		{150 * time.Minute, "🌗"}, // exactly 50%
+		{105 * time.Minute, "🌗"}, // 35%
+		{75 * time.Minute, "🌘"},  // exactly 25%
+		{1 * time.Hour, "🌘"},     // 20%
+		{30 * time.Minute, "🌑"},  // exactly 10%
 		{1 * time.Minute, "🌑"},
 		{0, ""},
 		{-time.Minute, ""},

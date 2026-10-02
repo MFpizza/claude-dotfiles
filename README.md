@@ -4,7 +4,7 @@
 
 ```
 ● A Pro  │ 5h ▰▰▰▰▰▰▰▰▰▱  92% 🌘 0h41m  │ wk ▰▰▰▰▰▰▰▱▱▱  67% 🌘 1d16h  │ Opus 5.5 │ 🐔✨ Lv7
-○ B Pro  │ 5h ▰▱▱▱▱▱▱▱▱▱  13% 🌖 3h46m  │ wk ▰▰▰▰▱▱▱▱▱▱  44% 🌗 3d21h
+○ B Pro  │ 5h ▰▱▱▱▱▱▱▱▱▱  13% 🌕 3h46m  │ wk ▰▰▰▰▱▱▱▱▱▱  44% 🌖 3d21h
 ```
 
 A's 5-hour limit almost gone? Quit and run `claude-b --continue`: B picks up right where A stopped.
@@ -20,7 +20,7 @@ A's 5-hour limit almost gone? Quit and run `claude-b --continue`: B picks up rig
 - 📏 **Two layouts**: one line per account, or everything on one line:
 
   ```
-  ● A Pro 5h ▰▰▰▰▰▰▰▰▰▱ 92% 🌘 wk 67% 🌘 │ ○ B Pro 5h ▰▱▱▱▱▱▱▱▱▱ 13% 🌖 wk 44% 🌗 │ Opus 5.5 │ 🐔✨ Lv7
+  ● A Pro 5h ▰▰▰▰▰▰▰▰▰▱ 92% 🌘 wk 67% 🌘 │ ○ B Pro 5h ▰▱▱▱▱▱▱▱▱▱ 13% 🌕 wk 44% 🌖 │ Opus 5.5 │ 🐔✨ Lv7
   ```
 - 🌐 English and Traditional Chinese, picked from your system language.
 - 📦 One file, nothing else to install. Windows, Linux and macOS.
@@ -67,7 +67,7 @@ Good to know:
 |---|---|
 | `●` / `○` | the account in this window / other accounts |
 | `5h ▰▰▰▱▱▱▱▱▱▱ 31% 🌗 2h05m` | 5-hour limit: 31% used, resets in 2 h 5 min |
-| `🌕` `🌖` `🌗` `🌘` `🌑` | time left before the limit resets: full moon when it has just reset, new moon when it's about to |
+| `🌕` `🌖` `🌗` `🌘` `🌑` | time left before the limit resets: 🌕 over 75% left, 🌖 over 50%, 🌗 over 25%, 🌘 over 10%, 🌑 the last 10% |
 | blue / amber / orange | under 50% / under 80% / 80% or more |
 | `cached · 3h ago` (compact: `*`) | couldn't refresh; showing the last values |
 | `today $3.10 │ month $25.70` | an API account's spend on this computer (check the Console for your bill) |
