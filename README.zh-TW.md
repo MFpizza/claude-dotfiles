@@ -100,7 +100,3 @@ curl -fsSL https://raw.githubusercontent.com/MFpizza/claude-dotfiles/master/inst
 ## 解除安裝
 
 `claude-accounts uninstall` 會移除指令與狀態列，保留所有帳號資料夾；之後再刪掉 `~/.local/bin/claude-accounts`。想連帳號資料夾一起刪，先用 `claude-accounts remove <字母>`，它會先拆掉連結再刪資料夾，不會動到帳號 a 的資料。
-
-## 從 Python 版升級
-
-照上面的方式安裝即可。第一次執行時會找出原本的帳號 B、C，保留你的寵物，並移除 `$PROFILE`／`~/.bashrc` 裡舊的區塊（備份成 `.bak`）。完成後請開新的終端機。
