@@ -10,6 +10,7 @@ The API-billed account has no quota, so its spend is logged in api-cost.json.
 """
 import json
 import os
+import random
 import sys
 import time
 import urllib.error
@@ -66,7 +67,7 @@ def load_json(path, default):
 
 
 def save_json(path, data):
-    tmp = path + ".tmp"
+    tmp = f"{path}.{os.getpid()}.tmp"  # several sessions may refresh at once
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f)
     os.replace(tmp, path)
@@ -187,9 +188,45 @@ def fmt_tag(name, plan, is_active):
     return f"{dot(is_active)} {color}{name}{RESET} {MUTED}{badge:<4}{RESET}"
 
 
-# Pet grows with the number of distinct sessions seen (Lv = 1 + sqrt(sessions)).
-PET_STAGES = [(10, "🦚"), (7, "🐔"), (5, "🐥"), (3, "🐣"), (1, "🥚")]
-PET_SEEN_MAX = 200  # remembered session ids, enough to avoid double counting
+# Pet grows with active Claude time: Lv = 1 + 19 * cbrt(hours / PET_LIFE_HOURS).
+# At Lv20 it is reborn with a ⭐ as a random line; lines with branches pick one at
+# random too, both preferring final forms not raised yet.
+PET_LIFE_HOURS = 150
+PET_MAX_LEVEL = 20
+PET_ACTIVE_GAP = 300  # refreshes further apart than this count as idle
+LEVEL_UP_SECS = 600  # how long the 🎉 stays after a level-up or rebirth
+# line -> (name, shared stages, {branch: (name, stages)}); a stage is (from level, emoji).
+# Emoji stay within Unicode 12: newer ones (🦭, 🦣, 🪿) render as boxes in many terminals.
+PET_LINES = {
+    "bird": ("鳥系", [(1, "🥚"), (3, "🐣"), (5, "🐥"), (7, "🐔")], {
+        "fowl": ("家禽", [(10, "🐓"), (13, "🦃"), (16, "🦚"), (20, "👑🦚")]),
+        "raptor": ("猛禽", [(10, "🐦"), (13, "🦉"), (16, "🦅"), (20, "👑🦅")]),
+    }),
+    "water": ("水鳥系", [(1, "🥚"), (3, "🐣"), (5, "🐥"), (7, "🦆"), (10, "🐧"), (13, "🦩"),
+                       (16, "🦢"), (20, "👑🦢")], {}),
+    "reptile": ("爬蟲系", [(1, "🥚"), (3, "🦎"), (5, "🐢"), (7, "🐍"), (10, "🐊")], {
+        "dino": ("恐龍", [(13, "🦕"), (16, "🦖"), (20, "👑🦖")]),
+        "dragon": ("龍", [(13, "🐲"), (16, "🐉"), (20, "👑🐉")]),
+    }),
+    "sea": ("深海系", [(1, "🥚"), (3, "🦐"), (5, "🐟"), (7, "🐠"), (10, "🐡")], {
+        "cephalopod": ("頭足", [(13, "🦑"), (16, "🐙"), (20, "👑🐙")]),
+        "crustacean": ("甲殼", [(13, "🦀"), (16, "🦞"), (20, "👑🦞")]),
+    }),
+    "insect": ("昆蟲系", [(1, "🥚"), (3, "🐛"), (5, "🐜"), (7, "🐞"), (10, "🦗"), (13, "🐝"),
+                        (16, "🦋"), (20, "👑🦋")], {}),
+    "plant": ("植物系", [(1, "🌰"), (3, "🌱"), (5, "🌿"), (7, "🍀")], {
+        "flower": ("花", [(10, "🌷"), (13, "🌹"), (16, "🌻"), (20, "👑🌻")]),
+        "sakura": ("櫻", [(10, "🌳"), (13, "🌸"), (16, "🍒"), (20, "👑🌸")]),
+        "apple": ("蘋果", [(10, "🌳"), (13, "🍏"), (16, "🍎"), (20, "👑🍎")]),
+        "grape": ("葡萄", [(10, "🍃"), (13, "🍇"), (16, "🍷"), (20, "👑🍷")]),
+    }),
+    "mammal": ("哺乳系", [(1, "🍼"), (3, "🐾")], {
+        "feline": ("貓科", [(5, "🐱"), (7, "🐈"), (10, "🐆"), (13, "🐅"), (16, "🦁"), (20, "👑🦁")]),
+        "canine": ("犬科", [(5, "🐶"), (10, "🐕"), (16, "🐺"), (20, "👑🐺")]),
+        "marine": ("海獸", [(5, "🦦"), (10, "🐬"), (13, "🐳"), (16, "🐋"), (20, "👑🐋")]),
+        "primate": ("靈長", [(5, "🐵"), (7, "🙈"), (10, "🐒"), (13, "🦧"), (16, "🦍"), (20, "👑🦍")]),
+    }),
+}
 
 
 def context_pct(session):
@@ -204,23 +241,97 @@ def context_pct(session):
     return used / size * 100
 
 
+def pet_hours_for(level):
+    return PET_LIFE_HOURS * ((level - 1) / (PET_MAX_LEVEL - 1)) ** 3
+
+
+def pet_level(hours):
+    frac = min(hours / PET_LIFE_HOURS, 1)
+    return 1 + int((PET_MAX_LEVEL - 1) * frac ** (1 / 3) + 1e-9)
+
+
+def pet_endings(line):
+    """(line, branch) for every final form of a line; branch is None if it never splits."""
+    return [(line, branch) for branch in PET_LINES[line][2] or [None]]
+
+
+def pick_branch(line, raised):
+    endings = pet_endings(line)
+    return random.choice([e for e in endings if e not in raised] or endings)[1]
+
+
+def raised_endings(pet):
+    return {(p["line"], p.get("branch")) for p in pet.get("past", [])}
+
+
+def next_line(pet):
+    """A random line that still has final forms not raised; once all have been, any line
+    but the current one."""
+    raised = raised_endings(pet) | {(pet["line"], pet.get("branch"))}
+    fresh = [line for line in PET_LINES if any(e not in raised for e in pet_endings(line))]
+    line = random.choice(fresh or [line for line in PET_LINES if line != pet["line"]])
+    return line, pick_branch(line, raised)
+
+
+def load_pet():
+    pet = load_json(PET_PATH, {})
+    if "hours" not in pet:
+        # Older saves counted sessions (Lv = 1 + sqrt(sessions)); keep that level.
+        level = pet.get("level") or 1 + int((pet.get("sessions") or 0) ** 0.5)
+        pet = {"life": 1, "line": "bird", "hours": pet_hours_for(level), "level": level}
+    if pet.get("line") not in PET_LINES:
+        pet["line"] = "reptile" if pet.get("line") == "dragon" else "bird"
+        pet.pop("branch", None)
+    if pet.get("branch") not in PET_LINES[pet["line"]][2]:
+        pet["branch"] = pick_branch(pet["line"], raised_endings(pet))
+    return pet
+
+
+def pet_body(pet):
+    _, stages, branches = PET_LINES[pet["line"]]
+    if pet.get("branch"):
+        stages = stages + branches[pet["branch"]][1]
+    return [emoji for lv, emoji in stages if pet["level"] >= lv][-1]
+
+
+def feed_pet(pet, now):
+    """Add the time since the last refresh, if it was short enough to count as active."""
+    gap = now - pet.get("tick", 0)
+    pet["tick"] = now
+    if not 0 < gap < PET_ACTIVE_GAP:
+        return
+    pet["hours"] += gap / 3600
+    while pet["hours"] >= PET_LIFE_HOURS:
+        pet["hours"] -= PET_LIFE_HOURS
+        pet.setdefault("past", []).append({
+            "line": pet["line"], "branch": pet.get("branch"),
+            "ended": datetime.fromtimestamp(now).strftime("%Y-%m-%d")})
+        (pet["line"], pet["branch"]), pet["life"] = next_line(pet), pet["life"] + 1
+        pet["leveled_at"] = now
+    level = pet_level(pet["hours"])
+    if level != pet["level"]:
+        pet["level"], pet["leveled_at"] = level, now
+
+
 def fmt_pet(session):
-    pet = load_json(PET_PATH, {"sessions": 0, "seen": []})
-    sid = session.get("session_id")
-    if sid and sid not in pet["seen"]:
-        pet["sessions"] += 1
-        pet["seen"] = (pet["seen"] + [sid])[-PET_SEEN_MAX:]
-        try:
-            save_json(PET_PATH, pet)
-        except OSError:
-            pass
-    level = 1 + int(pet["sessions"] ** 0.5)
-    body = next(e for lv, e in PET_STAGES if level >= lv)
+    now = time.time()
+    pet = load_pet()
+    feed_pet(pet, now)
+    try:
+        save_json(PET_PATH, pet)
+    except OSError:
+        pass
+    level = pet["level"]
+    body = pet_body(pet)
+    rebirths = pet["life"] - 1
+    stars = "⭐" * rebirths if rebirths <= 3 else f"⭐{rebirths}"
     # Mood follows context usage: fresh -> normal -> tired -> sleepy (time to /compact).
     pct = context_pct(session)
     mood = ("" if pct is None or 30 <= pct < 60 else
             "✨" if pct < 30 else "💦" if pct < 85 else "💤")
-    return f"{body}{mood} {MUTED}Lv{level}{RESET}"
+    if now - pet.get("leveled_at", 0) < LEVEL_UP_SECS:
+        return f"{stars}{body}{mood}🎉 {ACCENT}{BOLD}Lv{level}{RESET}"
+    return f"{stars}{body}{mood} {MUTED}Lv{level}{RESET}"
 
 
 def dot(is_active):
