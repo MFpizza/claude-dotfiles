@@ -1,25 +1,36 @@
 # claude-dotfiles
 
-用兩個 Claude 訂閱帳號（外加一個選用的 API 帳號）輪流工作：一個額度用完，換另一個接著做同一份對話。狀態列會同時顯示所有帳號的用量。
-
-**完整版**（預設）：
+**兩個 Claude 訂閱帳號輪流用，額度用完一鍵換手，對話不中斷。**
 
 ```
-● A Pro  │ 5h ▰▰▰▱▱▱▱▱▱▱  31% ↻ 2h05m  │ 週 ▰▰▰▰▰▰▰▱▱▱  67% ↻ 1d16h  │ Opus 5.5 │ 🐔✨ Lv7
+● A Pro  │ 5h ▰▰▰▰▰▰▰▰▰▱  92% ↻ 0h41m  │ 週 ▰▰▰▰▰▰▰▱▱▱  67% ↻ 1d16h  │ Opus 5.5 │ 🐔✨ Lv7
 ○ B Pro  │ 5h ▰▱▱▱▱▱▱▱▱▱  13% ↻ 3h46m  │ 週 ▰▰▰▰▱▱▱▱▱▱  44% ↻ 3d21h
-○ C API  │ 今日 $0.52 │ 本月 $25.70
 ```
 
-**緊湊版**（一行）：
+A 的 5 小時額度快用完了？離開後打 `claude-b --continue`，B 就從剛剛那句話接著做。
 
-```
-● A Pro 5h ▰▰▰▰▰▰▰▰▰▱ 88% ↻4h13m 週 39% │ ○ B Pro 5h ▰▱▱▱▱▱▱▱▱▱ 13% 週 29% │ ○ C API 今日 $0.52 │ Opus 5.5 │ 🐔✨ Lv7
+## 特色
+
+- 🔄 **換帳號不斷線**：A、B 共用對話紀錄、記憶、skills、agents，換手後上下文都還在。
+- 📊 **所有帳號的用量一眼看完**：5 小時與每週額度、重置倒數，連沒在用的帳號也看得到；快用完時會變成橘色。
+- 🐣 **會長大的小寵物**：用 Claude 越久等級越高，還會轉生成別的物種，總共有 16 種最終型態可以收集（[看全部](#小寵物)）。
+- 💳 **選用的 API 帳號 C**：兩個訂閱額度都用完時還能繼續，狀態列改顯示今日、本月花費。
+- 📏 **兩種版型**：完整版每個帳號一行；也可以切成只佔一行的緊湊版：
+
+  ```
+  ● A Pro 5h ▰▰▰▰▰▰▰▰▰▱ 92% ↻0h41m 週 67% │ ○ B Pro 5h ▰▱▱▱▱▱▱▱▱▱ 13% 週 44% │ Opus 5.5 │ 🐔✨ Lv7
+  ```
+- 🪟🐧 **支援 Windows 與 Linux**，只用 Python 標準函式庫，不用裝任何套件。macOS 不支援，因為登入憑證存在鑰匙圈，狀態列讀不到。
+
+## 30 秒安裝
+
+```bash
+git clone https://github.com/MFpizza/claude-dotfiles.git
+cd claude-dotfiles
+python install.py        # Linux 用 python3；也要 API 帳號 C 的話加 --with-api
 ```
 
-- A、B 兩個帳號**共用**對話紀錄、記憶、skills、agents，換帳號不會斷掉工作。
-- 帳號 C 走 API 計費，是選用的，給兩個訂閱額度都用完時用。
-- 狀態列最右邊有一隻[小寵物](#小寵物)，會隨著你使用 Claude 的時間長大。
-- 支援 Windows 與 Linux；macOS 不支援，因為登入憑證存在鑰匙圈，狀態列讀不到。
+開一個新的終端機，用 `claude-a`、`claude-b` 各登入一次（輸入 `/login`），就完成了。詳細的安裝選項見下方。
 
 ---
 
@@ -36,31 +47,14 @@
 
 ## 安裝
 
-需要：[Claude Code](https://docs.claude.com/en/docs/claude-code)、Python 3.8 以上（不用裝任何套件）、git。
-
-### Windows
-
-```powershell
-git clone https://github.com/MFpizza/claude-dotfiles.git
-cd claude-dotfiles
-python install.py              # 也要帳號 C 的話：python install.py --with-api
-```
-
-### Linux
-
-```bash
-git clone https://github.com/MFpizza/claude-dotfiles.git
-cd claude-dotfiles
-python3 install.py             # 也要帳號 C 的話加 --with-api
-```
-
-Linux 可用的參數：
+需要：[Claude Code](https://docs.claude.com/en/docs/claude-code)、Python 3.8 以上、git。安裝指令見上方的 [30 秒安裝](#30-秒安裝)；`install.py` 可以重複執行，不會產生重複的設定。
 
 | 參數 | 用途 |
 |---|---|
-| `--base ~/.claude-zhon` | 指定帳號 A 的目錄，B、C 會放在旁邊（`~/.claude-zhon-b`）。適合多人共用 `$HOME` 的機器。預設是 `$CLAUDE_CONFIG_DIR`，沒設就用 `~/.claude` |
-| `--rc ~/.zshrc` | 指令要寫進哪個啟動檔，預設 `~/.bashrc` |
-| `--no-rc` | 不改任何啟動檔，只印出要加的幾行，自己貼到想放的地方 |
+| `--with-api` | 也建立 API 計費的帳號 C（`~/.claude-c`）。沒加的電腦不會有 C，狀態列也不顯示它 |
+| `--base ~/.claude-zhon` | （Linux）指定帳號 A 的目錄，B、C 會放在旁邊（`~/.claude-zhon-b`）。適合多人共用 `$HOME` 的機器。預設是 `$CLAUDE_CONFIG_DIR`，沒設就用 `~/.claude` |
+| `--rc ~/.zshrc` | （Linux）指令要寫進哪個啟動檔，預設 `~/.bashrc` |
+| `--no-rc` | （Linux）不改任何啟動檔，只印出要加的幾行，自己貼到想放的地方 |
 
 ### 登入（每台電腦、每個帳號只要一次）
 
