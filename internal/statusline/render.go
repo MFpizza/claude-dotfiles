@@ -14,7 +14,11 @@ import (
 	"github.com/MFpizza/claude-dotfiles/internal/style"
 )
 
-const barWidth = 10
+const (
+	barWidth  = 10
+	fiveHours = 5 * time.Hour
+	week      = 7 * 24 * time.Hour
+)
 
 // fmtRemaining is the time left until an ISO reset time, rounded up to the minute.
 func fmtRemaining(resetsAt string, now time.Time) string {
@@ -34,6 +38,21 @@ func fmtRemaining(resetsAt string, now time.Time) string {
 		return fmt.Sprintf("%dh%02dm", hours, mins)
 	}
 	return fmt.Sprintf("%dm", mins)
+}
+
+// timeLeftIcon is a pie of the time left before a window resets, full when it has just
+// started. It never shows ○, which marks the other accounts.
+func timeLeftIcon(resetsAt string, period time.Duration, now time.Time) string {
+	t, err := time.Parse(time.RFC3339, resetsAt)
+	if err != nil {
+		return ""
+	}
+	left := t.Sub(now)
+	if left <= 0 {
+		return ""
+	}
+	quarters := int(math.Round(float64(left) / float64(period) * 4))
+	return []string{"◔", "◑", "◕", "●"}[max(1, min(4, quarters))-1]
 }
 
 func levelColor(pct float64) string {
@@ -69,7 +88,7 @@ func windowState(w *Window, stale bool, now time.Time) (float64, string, bool) {
 	return *w.Utilization, w.ResetsAt, true
 }
 
-func fmtWindow(label string, w *Window, stale bool, now time.Time) string {
+func fmtWindow(label string, period time.Duration, w *Window, stale bool, now time.Time) string {
 	head := style.Muted + label + style.Reset + " "
 	pct, resets, ok := windowState(w, stale, now)
 	if !ok {
@@ -77,12 +96,12 @@ func fmtWindow(label string, w *Window, stale bool, now time.Time) string {
 	}
 	s := head + bar(pct) + " " + levelColor(pct) + style.Bold + fmt.Sprintf("%3.0f%%", pct) + style.Reset
 	if r := fmtRemaining(resets, now); r != "" {
-		return s + " " + style.Muted + "↻ " + fmt.Sprintf("%-6s", r) + style.Reset
+		return s + " " + style.Muted + timeLeftIcon(resets, period, now) + " " + fmt.Sprintf("%-6s", r) + style.Reset
 	}
 	return s + strings.Repeat(" ", 9)
 }
 
-func compactWindow(label string, w *Window, stale, withBar bool, now time.Time) string {
+func compactWindow(label string, period time.Duration, w *Window, stale, withBar bool, now time.Time) string {
 	pct, resets, ok := windowState(w, stale, now)
 	if !ok {
 		return style.Muted + label + " —" + style.Reset
@@ -92,10 +111,8 @@ func compactWindow(label string, w *Window, stale, withBar bool, now time.Time) 
 		s += bar(pct) + " "
 	}
 	s += levelColor(pct) + style.Bold + fmt.Sprintf("%.0f%%", pct) + style.Reset
-	if pct >= 80 {
-		if r := fmtRemaining(resets, now); r != "" {
-			s += " " + style.Muted + "↻" + r + style.Reset
-		}
+	if icon := timeLeftIcon(resets, period, now); icon != "" {
+		s += " " + style.Muted + icon + style.Reset
 	}
 	return s
 }
@@ -182,10 +199,10 @@ func subscriptionRow(acc config.Account, e *Entry, err error, active bool, now t
 	}
 	age := now.Sub(fromUnix(e.FetchedAt))
 	stale := err != nil || age > 3*CacheTTL
-	full := fmtTag(acc.Name, e.Plan, active) + style.Sep + fmtWindow("5h", e.FiveHour, stale, now) +
-		style.Sep + fmtWindow(lang.T("wk"), e.SevenDay, stale, now)
-	compact := compactTag(acc.Name, e.Plan, active) + " " + compactWindow("5h", e.FiveHour, stale, true, now) +
-		" " + compactWindow(lang.T("wk"), e.SevenDay, stale, false, now)
+	full := fmtTag(acc.Name, e.Plan, active) + style.Sep + fmtWindow("5h", fiveHours, e.FiveHour, stale, now) +
+		style.Sep + fmtWindow(lang.T("wk"), week, e.SevenDay, stale, now)
+	compact := compactTag(acc.Name, e.Plan, active) + " " + compactWindow("5h", fiveHours, e.FiveHour, stale, true, now) +
+		" " + compactWindow(lang.T("wk"), week, e.SevenDay, stale, false, now)
 	if stale {
 		full += style.Sep + style.Muted + style.Italic + lang.T("cached", fmtAge(lang, age)) + style.Reset
 		compact += style.Muted + "*" + style.Reset

@@ -85,8 +85,8 @@ func (f *fixture) run() string {
 
 func TestRunFull(t *testing.T) {
 	want := strings.Join([]string{
-		"● A Pro  │ 5h ▰▰▰▱▱▱▱▱▱▱  31% ↻ 2h05m  │ wk ▰▱▱▱▱▱▱▱▱▱   8% ↻ 3d04h  │ Opus 5.5 │ 🐔✨ Lv7",
-		"○ B Pro  │ 5h ▰▰▰▰▰▰▰▰▰▰ 100% ↻ 2h29m  │ wk ▰▱▱▱▱▱▱▱▱▱  14% ↻ 6d11h ",
+		"● A Pro  │ 5h ▰▰▰▱▱▱▱▱▱▱  31% ◑ 2h05m  │ wk ▰▱▱▱▱▱▱▱▱▱   8% ◑ 3d04h  │ Opus 5.5 │ 🐔✨ Lv7",
+		"○ B Pro  │ 5h ▰▰▰▰▰▰▰▰▰▰ 100% ◑ 2h29m  │ wk ▰▱▱▱▱▱▱▱▱▱  14% ● 6d11h ",
 		"○ C API  │ today $0.52 │ month $25.70",
 	}, "\n")
 	if got := newFixture(t, "en").run(); got != want {
@@ -97,7 +97,7 @@ func TestRunFull(t *testing.T) {
 func TestRunCompact(t *testing.T) {
 	f := newFixture(t, "en")
 	f.setLayout(t, config.LayoutCompact)
-	want := "● A Pro 5h ▰▰▰▱▱▱▱▱▱▱ 31% wk 8% │ ○ B Pro 5h ▰▰▰▰▰▰▰▰▰▰ 100% ↻2h29m wk 14% │ ○ C API today $0.52 │ Opus 5.5 │ 🐔✨ Lv7"
+	want := "● A Pro 5h ▰▰▰▱▱▱▱▱▱▱ 31% ◑ wk 8% ◑ │ ○ B Pro 5h ▰▰▰▰▰▰▰▰▰▰ 100% ◑ wk 14% ● │ ○ C API today $0.52 │ Opus 5.5 │ 🐔✨ Lv7"
 	if got := f.run(); got != want {
 		t.Fatalf("got  %s\nwant %s", got, want)
 	}
@@ -194,5 +194,30 @@ func TestRunSurvivesBadInput(t *testing.T) {
 	}
 	if data, _ := os.ReadFile(filepath.Join(f.main, config.FileName)); string(data) != "{broken" {
 		t.Fatal("the status line must not rewrite the config")
+	}
+}
+
+func TestTimeLeftIcon(t *testing.T) {
+	now := t0
+	at := func(left time.Duration) string { return now.Add(left).Format(time.RFC3339) }
+	for _, c := range []struct {
+		left time.Duration
+		want string
+	}{
+		{5 * time.Hour, "●"},
+		{263 * time.Minute, "●"}, // 7/8 of 5h left
+		{4 * time.Hour, "◕"},
+		{150 * time.Minute, "◑"},
+		{1 * time.Hour, "◔"},
+		{1 * time.Minute, "◔"}, // never ○, which marks the other accounts
+		{0, ""},
+		{-time.Minute, ""},
+	} {
+		if got := timeLeftIcon(at(c.left), 5*time.Hour, now); got != c.want {
+			t.Errorf("%v left: got %q, want %q", c.left, got, c.want)
+		}
+	}
+	if got := timeLeftIcon("", 5*time.Hour, now); got != "" {
+		t.Errorf("no reset time: %q", got)
 	}
 }
