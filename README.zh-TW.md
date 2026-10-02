@@ -100,3 +100,7 @@ curl -fsSL https://raw.githubusercontent.com/MFpizza/claude-dotfiles/master/inst
 ## 解除安裝
 
 `claude-accounts uninstall` 會移除指令與狀態列，保留所有帳號資料夾；之後再刪掉 `~/.local/bin/claude-accounts`。想連帳號資料夾一起刪，先用 `claude-accounts remove <字母>`，它會先拆掉連結再刪資料夾，不會動到帳號 a 的資料。
+
+## 授權
+
+[MIT](LICENSE)

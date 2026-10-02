@@ -100,3 +100,7 @@ Each line ends crowned (👑) at Lv20.
 ## Uninstall
 
 `claude-accounts uninstall` removes the commands and the status line and keeps every account folder. Then delete `~/.local/bin/claude-accounts`. To delete an account folder too, use `claude-accounts remove <letter>` first, which removes its links before the folder so account a's data is never touched.
+
+## License
+
+[MIT](LICENSE)
